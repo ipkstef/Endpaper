@@ -21,10 +21,10 @@ import (
 // /mnt/us, which disappears in USB mode. "Save log" copies it to the
 // install folder (USBLogName).
 const (
-	DefaultStateDir = "/var/local/hcbridge"
+	DefaultStateDir = "/var/local/endpaper"
 	DefaultCCDB     = "/var/local/cc.db"
-	DefaultLog      = "/var/local/hcbridge/hcbridge.log"
-	USBLogName      = "hcbridge-log.txt"
+	DefaultLog      = "/var/local/endpaper/endpaper.log"
+	USBLogName      = "endpaper-log.txt"
 )
 
 // TokenStore saves the OAuth token as JSON with mode 0600.
@@ -64,7 +64,7 @@ func (s *TokenStore) Save(t *hardcover.Token) error {
 	return atomicfile.WriteJSON(s.Path, t, 0o600)
 }
 
-// Lock takes an exclusive lock shared by all hcbridge processes (the daemon
+// Lock takes an exclusive lock shared by all endpaper processes (the daemon
 // and menu commands), so only one of them refreshes the token at a time.
 // It waits until the lock is free. Call unlock when done.
 func (s *TokenStore) Lock() (unlock func(), err error) {

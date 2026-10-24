@@ -1,22 +1,22 @@
-// Command hcbridge syncs Kindle reading progress to Hardcover.
+// Command endpaper syncs Kindle reading progress to Hardcover.
 //
 // Users only tap "Hardcover" in the library (documents/Hardcover.sh), which
-// runs "hcbridge app": it starts the daemon and opens our page. The other
+// runs "endpaper app": it starts the daemon and opens our page. The other
 // commands are for development and support (SSH).
 //
-//	hcbridge app      start the daemon if needed, open the page
-//	hcbridge login    sign in with a device code (shown on the Kindle screen)
-//	hcbridge daemon   run in the background, sync on events
-//	hcbridge stop     stop the daemon
-//	hcbridge status   show daemon state on screen
-//	hcbridge sync     send the current book's progress once
-//	hcbridge identify find the current book on Hardcover (no writes)
-//	hcbridge clips    send new highlights/notes (private journal entries)
-//	hcbridge clipsall send all highlights/notes, also old ones
-//	hcbridge savelog  copy the log to the USB drive
-//	hcbridge selftest check all parts, show OK / FAIL (no writes)
-//	hcbridge whoami   show the signed-in user
-//	hcbridge logout   delete the saved token
+//	endpaper app      start the daemon if needed, open the page
+//	endpaper login    sign in with a device code (shown on the Kindle screen)
+//	endpaper daemon   run in the background, sync on events
+//	endpaper stop     stop the daemon
+//	endpaper status   show daemon state on screen
+//	endpaper sync     send the current book's progress once
+//	endpaper identify find the current book on Hardcover (no writes)
+//	endpaper clips    send new highlights/notes (private journal entries)
+//	endpaper clipsall send all highlights/notes, also old ones
+//	endpaper savelog  copy the log to the USB drive
+//	endpaper selftest check all parts, show OK / FAIL (no writes)
+//	endpaper whoami   show the signed-in user
+//	endpaper logout   delete the saved token
 package main
 
 import (
@@ -77,22 +77,27 @@ type app struct {
 }
 
 func main() {
-	fs := flag.NewFlagSet("hcbridge", flag.ExitOnError)
+	fs := flag.NewFlagSet("endpaper", flag.ExitOnError)
 	cid := fs.String("client-id", clientID, "Hardcover OAuth client ID")
 	state := fs.String("state", config.DefaultStateDir, "state directory (token, daemon state)")
 	dbPath := fs.String("db", config.DefaultCCDB, "path to cc.db")
 	logPath := fs.String("log", config.DefaultLog, "log file (empty: stderr only)")
 	scope := fs.String("scope", hardcover.DefaultScope, "OAuth scopes")
 	row := fs.Int("row", 3, "first screen row for messages")
-	home := fs.String("home", "", "install folder, e.g. /mnt/us/hcbridge (deleting it uninstalls)")
+	home := fs.String("home", "", "install folder, e.g. /mnt/us/endpaper (deleting it uninstalls)")
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: hcbridge app|login|daemon|stop|status|sync|identify|clips|clipsall|savelog|selftest|whoami|logout [flags]")
+		fmt.Fprintln(os.Stderr, "usage: endpaper app|login|daemon|stop|status|sync|identify|clips|clipsall|savelog|selftest|whoami|logout [flags]")
 		os.Exit(2)
 	}
 	cmd := os.Args[1]
 	_ = fs.Parse(os.Args[2:])
 
+	// Before the log: the log lives in the state folder being moved.
+	notes := migrateLegacy(*state, usbMounted)
 	setupLog(*logPath)
+	for _, n := range notes {
+		log.Printf("migrate from hcbridge: %s", n)
+	}
 	a := &app{
 		store:    config.NewTokenStore(*state),
 		db:       &readers.Database{Path: *dbPath},
@@ -147,10 +152,10 @@ func main() {
 		log.Printf("%s: error: %v", cmd, err)
 		msg := err.Error()
 		if errors.Is(err, config.ErrNoToken) || errors.Is(err, hardcover.ErrUnauthorized) {
-			msg = "Not signed in. Tap Hardcover to sign in."
+			msg = "Not signed in. Tap Endpaper to sign in."
 		}
 		if cmd != "daemon" { // the daemon never draws on the screen
-			a.screen.Show("Hardcover: ERROR", trim(msg, 46), "Details: hcbridge log (Save log)")
+			a.screen.Show("Endpaper: ERROR", trim(msg, 46), "Details: Save log for support")
 		}
 		os.Exit(1)
 	}
@@ -190,7 +195,7 @@ func (a *app) login(ctx context.Context) error {
 	msg := "Background sync is ON."
 	if err := a.startDaemon(); err != nil {
 		log.Printf("login: start daemon: %v", err)
-		msg = "Tap Hardcover again to start sync."
+		msg = "Tap Endpaper again to start sync."
 	}
 	a.screen.Show("Signed in as @"+me.Username+".", msg, "",
 		"Tip: unlink Goodreads on the Kindle",
@@ -199,7 +204,7 @@ func (a *app) login(ctx context.Context) error {
 	return nil
 }
 
-// startDaemon starts "hcbridge daemon" as its own background process (new
+// startDaemon starts "endpaper daemon" as its own background process (new
 // session, output to the log).
 func (a *app) startDaemon() error {
 	exe, err := os.Executable()
@@ -239,7 +244,7 @@ func (a *app) identify(ctx context.Context) error {
 	}
 	res, ub, err := a.syncer().Identify(ctx, local)
 	if errors.Is(err, syncer.ErrNotFound) {
-		a.screen.Show("Hardcover: book not found", trim(local.Title, 46))
+		a.screen.Show("Endpaper: book not found", trim(local.Title, 46))
 		return nil
 	}
 	if err != nil {
@@ -249,7 +254,7 @@ func (a *app) identify(ctx context.Context) error {
 	if ub != nil {
 		shelf = syncer.StatusName(ub.StatusID)
 	}
-	a.screen.Show("Hardcover: found", trim(res.Title, 46), "via "+res.Method, "Shelf: "+shelf)
+	a.screen.Show("Endpaper: found", trim(res.Title, 46), "via "+res.Method, "Shelf: "+shelf)
 	return nil
 }
 
@@ -264,9 +269,9 @@ func (a *app) syncNow(ctx context.Context) error {
 	}
 	switch out.Kind {
 	case syncer.Skipped:
-		a.screen.Show("Hardcover: not sent", trim(out.Title, 46), trim(out.Reason, 46))
+		a.screen.Show("Endpaper: not sent", trim(out.Title, 46), trim(out.Reason, 46))
 	default:
-		lines := []string{"Hardcover: synced", trim(out.Title, 46),
+		lines := []string{"Endpaper: synced", trim(out.Title, 46),
 			fmt.Sprintf("Page %d of %d (%.0f%%)", out.Page, out.Pages, local.Percent)}
 		if out.Finished {
 			lines[2] = "Finished: status Read"
@@ -279,12 +284,12 @@ func (a *app) syncNow(ctx context.Context) error {
 	return nil
 }
 
-// stateDB opens the state database once (/var/local/hcbridge/hcbridge.db).
+// stateDB opens the state database once (/var/local/endpaper/endpaper.db).
 // If it cannot be opened, the JSON files are used (capability model: a
 // missing backend never stops the daemon).
 func (a *app) stateDB() *store.Store {
 	if a.sdb == nil && !a.sdbFailed {
-		s, err := store.Open(filepath.Join(a.stateDir, "hcbridge.db"))
+		s, err := store.Open(filepath.Join(a.stateDir, "endpaper.db"))
 		if err != nil {
 			log.Printf("state db: %v (using JSON files)", err)
 			a.sdbFailed = true
@@ -306,12 +311,12 @@ func (a *app) rateSync() *syncer.RateSync {
 }
 
 func (a *app) clipsNow(ctx context.Context, all bool) error {
-	a.screen.Show("Hardcover: sending highlights/notes...")
+	a.screen.Show("Endpaper: sending highlights/notes...")
 	n, err := a.clipSync().Run(ctx, all)
 	if err != nil {
 		return err
 	}
-	a.screen.Show(fmt.Sprintf("Hardcover: %d highlights/notes sent", n), "(private journal entries)")
+	a.screen.Show(fmt.Sprintf("Endpaper: %d highlights/notes sent", n), "(private journal entries)")
 	return nil
 }
 
@@ -330,7 +335,7 @@ func (a *app) usbDir() string {
 // returns the file's path.
 func (a *app) saveLogFile() (string, error) {
 	// Header: the state at save time, so one file answers most questions.
-	hdr := fmt.Sprintf("== hcbridge %s, saved %s ==\n", version, time.Now().UTC().Format(time.RFC3339))
+	hdr := fmt.Sprintf("== endpaper %s, saved %s ==\n", version, time.Now().UTC().Format(time.RFC3339))
 	if pid := a.running(); pid != 0 {
 		hdr += fmt.Sprintf("daemon: running, pid %d\n", pid)
 	} else {

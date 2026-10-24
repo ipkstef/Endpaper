@@ -354,7 +354,7 @@ func ratingAlert(ctx context.Context, text string) {
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	if err := screen.Alert("Hardcover", text, alertHideMs); err != nil {
+	if err := screen.Alert("Endpaper", text, alertHideMs); err != nil {
 		log.Printf("daemon: alert: %v", err)
 	}
 }
@@ -428,8 +428,12 @@ func watchRatings(ctx context.Context, dir string, fn func(context.Context)) {
 }
 
 // running returns the daemon's pid, or 0.
-func (a *app) running() int {
-	b, err := os.ReadFile(a.pidPath())
+func (a *app) running() int { return lockedPid(a.pidPath()) }
+
+// lockedPid returns the pid in a daemon's pid file while that daemon runs
+// (the file is locked while it runs), or 0.
+func lockedPid(path string) int {
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return 0
 	}
@@ -440,8 +444,7 @@ func (a *app) running() int {
 	if syscall.Kill(pid, 0) != nil {
 		return 0
 	}
-	// The pid file is locked while the daemon runs.
-	f, err := os.Open(a.pidPath())
+	f, err := os.Open(path)
 	if err != nil {
 		return 0
 	}

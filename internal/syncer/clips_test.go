@@ -40,7 +40,7 @@ func testClipSync(t *testing.T, useDB bool) {
 	cs := &ClipSync{S: &Syncer{C: f.client(t), Logf: t.Logf}, Books: fakeBooks{},
 		Path: path, StatePath: filepath.Join(dir, "clips.json")}
 	if useDB {
-		db, err := store.Open(filepath.Join(dir, "hcbridge.db"))
+		db, err := store.Open(filepath.Join(dir, "endpaper.db"))
 		if err != nil {
 			t.Fatal(err)
 		}

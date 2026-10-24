@@ -25,10 +25,10 @@ jobs:
         run: |
           test -n "$HC_CLIENT_ID" || { echo "secret HC_CLIENT_ID is not set"; exit 1; }
           ./scripts/build.sh
-          test -f "dist/hcbridge-${GITHUB_REF_NAME}.zip"
+          test -f "dist/endpaper-${GITHUB_REF_NAME}.zip"
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "dist/hcbridge-${GITHUB_REF_NAME}.zip" \
+          gh release create "$GITHUB_REF_NAME" "dist/endpaper-${GITHUB_REF_NAME}.zip" \
             --title "$GITHUB_REF_NAME" --generate-notes

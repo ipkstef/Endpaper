@@ -219,7 +219,7 @@ func (c *Client) do(ctx context.Context, query string, vars map[string]any, out 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+tok)
-	req.Header.Set("User-Agent", "kindle-hardcover-bridge (https://github.com/ipkstef/kindle-hardcover-bridge)")
+	req.Header.Set("User-Agent", "Endpaper (https://github.com/ipkstef/kindle-hardcover-bridge)")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		if ctx.Err() == nil && noNetwork(err) {

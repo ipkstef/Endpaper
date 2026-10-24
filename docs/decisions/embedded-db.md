@@ -3,7 +3,7 @@
 Status: **built** (2026-09-28, `internal/store`). Settings changed from the first proposal: see "As built".
 
 ## Context
-Daemon state today is JSON files in `/var/local/hcbridge/` (ext3, persistent):
+Daemon state today is JSON files in `/var/local/endpaper/` (ext3, persistent):
 `state.json` (progress snapshot, pending, finished), `clips.json` (sent clip
 IDs), `ratings.json` (pending taps, cursors), `bookmap.json` (match cache),
 `token.json`. Each change rewrites a whole file (tmp + rename). Sizes today:
@@ -25,7 +25,7 @@ ARM binary 10.4 MB.
 | mattn/go-sqlite3 (cgo) | — | — | needs cgo + cross C toolchain — reject |
 
 ## Decision (proposed)
-**modernc.org/sqlite**, one file `/var/local/hcbridge/hcbridge.db`:
+**modernc.org/sqlite**, one file `/var/local/endpaper/endpaper.db`:
 - no new dependency or binary size; proven on this device (cc.db reads);
 - transactions make "sent + state update" atomic (safe on crash/battery off);
 - indexed `clips_sent` scales with years of highlights.
@@ -48,7 +48,7 @@ Pinned version: `modernc.org/sqlite v1.38.2` (needs Go 1.23; newest
 versions need newer Go — keep pinned until the Go/kernel floor is decided).
 
 ## As built (2026-09-28)
-- File `/var/local/hcbridge/hcbridge.db` (0600). Why `/var/local`: ext3,
+- File `/var/local/endpaper/endpaper.db` (0600). Why `/var/local`: ext3,
   kept across restarts, where Amazon keeps `cc.db`; `/mnt/us` is FAT and is
   unmounted in USB mode (the daemon keeps running), `/tmp` is RAM, rootfs is
   read-only and replaced by updates. 5 MB free-space guard stays.

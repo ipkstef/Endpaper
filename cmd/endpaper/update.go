@@ -65,7 +65,7 @@ func latestTag(ctx context.Context, c *http.Client) (string, error) {
 		return "", err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "kindle-hardcover-bridge")
+	req.Header.Set("User-Agent", "Endpaper")
 	resp, err := c.Do(req)
 	if err != nil {
 		return "", err

@@ -1,5 +1,5 @@
 // Package store is the daemon's own state database: one SQLite file in
-// /var/local/hcbridge (ext3, kept across restarts; /mnt/us is FAT and is
+// /var/local/endpaper (ext3, kept across restarts; /mnt/us is FAT and is
 // unmounted in USB mode, /tmp is RAM). See docs/decisions/embedded-db.md.
 //
 // Each table maps a text key to a JSON value (one row per book, clip, ...).

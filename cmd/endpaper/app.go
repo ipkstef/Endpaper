@@ -20,11 +20,11 @@ import (
 
 const (
 	// appID is our app's id in appreg.db and in ui/config.xml.
-	appID = "io.github.ipkstef.hcbridge"
+	appID = "io.github.ipkstef.endpaper"
 	// uiDir holds the page. Not in the state folder: Mesquite may run as
 	// another user (UNVERIFIED), so the page is world-readable; the state
 	// folder (token) is not.
-	uiDir    = "/var/local/mesquite/hcbridge"
+	uiDir    = "/var/local/mesquite/endpaper"
 	mesquite = "/usr/bin/mesquite"
 )
 
@@ -70,7 +70,7 @@ func uiDaemon() (pid int, ver string) {
 	return pid, string(m[2])
 }
 
-// launch is the library tap ("Hardcover.sh"): make sure this version of
+// launch is the library tap ("Endpaper.sh"): make sure this version of
 // the daemon runs, then open our page. If the page cannot open (no
 // Mesquite, appreg or LIPC on this Kindle), fall back to text on the
 // screen: sign in, or the status.

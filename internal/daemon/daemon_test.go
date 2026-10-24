@@ -267,7 +267,7 @@ func TestDBStateRestartAndImport(t *testing.T) {
 	dir := t.TempDir()
 	jsonPath := filepath.Join(dir, "state.json")
 	os.WriteFile(jsonPath, []byte(`{"snapshot":{"a":{"percent":10,"last_access":100}},"pending":{},"finished":{"b":"2026-09-01"}}`), 0o600)
-	db, err := store.Open(filepath.Join(dir, "hcbridge.db"))
+	db, err := store.Open(filepath.Join(dir, "endpaper.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

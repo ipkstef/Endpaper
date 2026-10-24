@@ -191,7 +191,7 @@ func TestRatingsDB(t *testing.T) {
 	db.Exec(`CREATE TABLE records (id INTEGER PRIMARY KEY, schema_name TEXT, created_timestamp INTEGER, record TEXT)`)
 	db.Exec(`INSERT INTO records VALUES (1,'goodreads_book_ratings',1000,'{"action_id":"write_rating","book_asin":"k","rating":"4"}')`)
 	db.Close()
-	st, err := store.Open(filepath.Join(dir, "hcbridge.db"))
+	st, err := store.Open(filepath.Join(dir, "endpaper.db"))
 	if err != nil {
 		t.Fatal(err)
 	}

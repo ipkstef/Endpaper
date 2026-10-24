@@ -21,14 +21,14 @@ import (
 )
 
 // selfTestFile is the result file in the install folder.
-const selfTestFile = "hcbridge-selftest.txt"
+const selfTestFile = "endpaper-selftest.txt"
 
 // selfTest (command line) runs the checks, tests the alert box and shows
 // the result on the screen.
 func (a *app) selfTest(ctx context.Context) error {
-	a.screen.Show("Hardcover self-test: running...")
+	a.screen.Show("Endpaper self-test: running...")
 	_, screenLines := a.checks(ctx)
-	err := screen.Alert("Hardcover self-test", "This box closes by itself in 4 s.", 4000)
+	err := screen.Alert("Endpaper self-test", "This box closes by itself in 4 s.", 4000)
 	l := "OK   alert box: shown"
 	if err != nil {
 		l = "FAIL alert box: " + err.Error()
@@ -36,12 +36,12 @@ func (a *app) selfTest(ctx context.Context) error {
 	log.Printf("selftest: %s", l)
 	screenLines = append(screenLines, l)
 	time.Sleep(5 * time.Second) // let the alert close before drawing the result
-	a.screen.Show(append([]string{"Hardcover self-test (also in", selfTestFile + "):"}, screenLines...)...)
+	a.screen.Show(append([]string{"Endpaper self-test (also in", selfTestFile + "):"}, screenLines...)...)
 	return nil
 }
 
 // checks tests every part it can test by itself (OK / FAIL lines), also
-// written to the log and to hcbridge-selftest.txt. It writes nothing to
+// written to the log and to endpaper-selftest.txt. It writes nothing to
 // Hardcover (book look-up only) and nothing to the Kindle's files. Used by
 // the page's "Check setup".
 func (a *app) checks(ctx context.Context) (lines, screenLines []string) {

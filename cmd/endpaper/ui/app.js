@@ -1,4 +1,4 @@
-/* Hardcover page. ES5 only (the Kindle's WebKit is old): no arrow
+/* Endpaper page. ES5 only (the Kindle's WebKit is old): no arrow
    functions, no fetch, no Promise. HC (port, key) comes from config.js,
    written by the daemon at each start. */
 (function () {

@@ -1,4 +1,4 @@
-# CLAUDE.md — Kindle → Hardcover Sync
+# CLAUDE.md — Endpaper (Kindle → Hardcover sync)
 
 ## Project goal
 A small background daemon on a **jailbroken Kindle** that reads the user's reading
@@ -58,15 +58,23 @@ internal/hardcover/  OAuth device flow, token refresh, GraphQL client
 internal/config/     config + token storage
 internal/store/      our state DB (SQLite)
 internal/appreg/     register our page in the Kindle's appreg.db
-cmd/hcbridge/        the program: app (library tap), daemon, local page API,
+cmd/endpaper/        the program: app (library tap), daemon, local page API,
                      ui/ (Mesquite page, embedded), dev commands
 internal/certs/      bundled CA roots
-packaging/kindle/    documents/Hardcover.sh (the library item)
+packaging/kindle/    documents/Endpaper.sh (the library item)
 scripts/             build scripts
 docs/                context docs (read these)
 ```
 
 ## Where we left off
+Name (user decision 2026-10-24): **Endpaper** — "a native Kindle →
+hardcover.app sync". Binary, folders and library item are `endpaper`
+(`/mnt/us/endpaper`, `/var/local/endpaper`, `documents/Endpaper.sh`, app id
+`io.github.ipkstef.endpaper`). The first run moves an old `hcbridge`
+install (`migrateLegacy`). The GitHub repo is still
+`kindle-hardcover-bridge` (rename is the user's choice; module path and
+URLs follow it).
+
 Core sync is done and **works on device** (e118f27): progress (cc.db,
 sleep sidecar fallback), auto-add, finish, re-read, ratings + result box,
 highlights/notes, offline retry, SQLite state, self-test. History of the
@@ -74,8 +82,8 @@ research and device results: `docs/findings-bellatrix-5.17.1.md`,
 `docs/roadmap.md`.
 
 Distribution (user decisions 2026-10-02 … 10-24): **no KUAL, no KPM.** A
-GitHub release zip: `documents/Hardcover.sh` (scriptlet = library item) +
-`hcbridge/` folder, copied by USB. The tap runs `hcbridge app`: starts the
+GitHub release zip: `documents/Endpaper.sh` (scriptlet = library item) +
+`endpaper/` folder, copied by USB. The tap runs `endpaper app`: starts the
 daemon (also when signed out) and opens our **Mesquite page** (registered
 in `/var/local/appreg.db`; minor appreg writes are OK, user 2026-10-24).
 The page talks to the daemon over 127.0.0.1 (random port + key in

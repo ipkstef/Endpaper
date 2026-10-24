@@ -1,7 +1,9 @@
-# Hardcover Sync for Kindle
+# Endpaper
 
-Read on your jailbroken Kindle as usual. This small background program
-sends your reading progress to [Hardcover](https://hardcover.app).
+**A native Kindle → [Hardcover.app](https://hardcover.app) sync.**
+
+Read on your jailbroken Kindle as usual. Endpaper is a small background
+program that sends your reading progress to Hardcover.
 
 - **Progress:** the page you reached, after you close the book or the
   Kindle goes to sleep. Forward only: it never moves your progress back.
@@ -10,6 +12,9 @@ sends your reading progress to [Hardcover](https://hardcover.app).
 - **Re-reads:** starting a finished book again starts a new read.
 - **Star ratings** from the Kindle's end-of-book screen.
 - **Highlights and notes:** sent as *private* journal entries.
+
+Endpaper is an independent project, not made by or affiliated with
+Hardcover or Amazon.
 
 It only reads the Kindle's files. It does not change the Kindle reader or
 your books, and it works with the stock Amazon reader (no KOReader).
@@ -26,33 +31,33 @@ should work but are not tested yet; please report results.
 
 ## Install
 
-1. Download `hcbridge-<version>.zip` from the
+1. Download `endpaper-<version>.zip` from the
    [releases page](https://github.com/ipkstef/kindle-hardcover-bridge/releases).
 2. Connect the Kindle to your computer with USB.
 3. Unzip the file onto the Kindle drive. You get:
-   - `documents/Hardcover.sh`: the **Hardcover** item in your library
-   - `hcbridge/`: the program
+   - `documents/Endpaper.sh`: the **Endpaper** item in your library
+   - `endpaper/`: the program
 4. Eject the Kindle.
-5. In the library, tap **Hardcover**. Tap **Sign in**, scan the code with
+5. In the library, tap **Endpaper**. Tap **Sign in**, scan the code with
    your phone (or open the link and enter the code), and approve.
 
-Sync now runs in the background. You do not need to open Hardcover again.
+Sync now runs in the background. You do not need to open Endpaper again.
 
-**After a restart of the Kindle**, tap **Hardcover** once to start sync
+**After a restart of the Kindle**, tap **Endpaper** once to start sync
 again.
 
 ## Use
 
-Tap **Hardcover** in the library to see the status and these options:
+Tap **Endpaper** in the library to see the status and these options:
 
 | Button | What it does |
 |---|---|
 | Sync now | Checks your books at once (normally automatic) |
 | Import old highlights | Sends highlights and notes made before you installed |
 | Check setup | Tests each part and shows OK / FAIL |
-| Save log for support | Writes `hcbridge/hcbridge-log.txt` to the USB drive |
+| Save log for support | Writes `endpaper/endpaper-log.txt` to the USB drive |
 | Sign out | Removes your sign-in from this Kindle |
-| Stop sync | Stops until you tap Hardcover again |
+| Stop sync | Stops until you tap Endpaper again |
 | Uninstall | Removes everything (see below) |
 
 Leave the page with the Home button.
@@ -66,43 +71,43 @@ Leave the page with the Home button.
 
 ## Update
 
-When a new version is out, the Hardcover page shows an **Update available**
+When a new version is out, the Endpaper page shows an **Update available**
 banner.
 
 1. Download the new zip from the releases page.
 2. Connect USB and unzip it onto the Kindle drive. Replace the old files.
-   **Do not delete the `hcbridge` folder first**: deleting it uninstalls
+   **Do not delete the `endpaper` folder first**: deleting it uninstalls
    (your sign-in is removed).
-3. Eject and tap **Hardcover**. The new version starts.
+3. Eject and tap **Endpaper**. The new version starts.
 
 ## Uninstall
 
 Either:
 
-- tap **Hardcover** > **Uninstall**, or
-- delete `documents/Hardcover.sh` and the `hcbridge` folder over USB. If
+- tap **Endpaper** > **Uninstall**, or
+- delete `documents/Endpaper.sh` and the `endpaper` folder over USB. If
   sync is running, it removes its remaining files (sign-in and state) the
   next time it wakes up. If you restarted the Kindle and did not tap
-  Hardcover since then, tap it once before you delete the folder.
+  Endpaper since then, tap it once before you delete the folder.
 
 ## Privacy
 
-Your Hardcover sign-in stays on the Kindle (`/var/local/hcbridge`). The
+Your Hardcover sign-in stays on the Kindle (`/var/local/endpaper`). The
 program talks to Hardcover, and, while the Hardcover page is open, at most
 once a day to GitHub to look for a new version. Highlights and notes are
 sent as private entries. Nothing else is collected.
 
 ## Troubleshooting
 
-1. Tap **Hardcover** > **Check setup**.
+1. Tap **Endpaper** > **Check setup**.
 2. Tap **Save log for support**, connect USB and send
-   `hcbridge/hcbridge-log.txt` with your report.
+   `endpaper/endpaper-log.txt` with your report.
 
 ## For developers
 
 ```sh
 go test ./...
-HC_CLIENT_ID=<your Hardcover OAuth client id> ./scripts/build.sh   # dist/hcbridge-<version>.zip
+HC_CLIENT_ID=<your Hardcover OAuth client id> ./scripts/build.sh   # dist/endpaper-<version>.zip
 ```
 
 One static ARM binary in Go (no system libraries needed). The design and

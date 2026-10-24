@@ -326,7 +326,7 @@ func (s *api) stopSync(context.Context) (string, error) {
 		time.Sleep(300 * time.Millisecond) // let the answer go out
 		s.stop()
 	}()
-	return "Sync stopped. Tap Hardcover in your library to start it again.", nil
+	return "Sync stopped. Tap Endpaper in your library to start it again.", nil
 }
 
 func (s *api) uninstall(context.Context) (string, error) {
@@ -334,5 +334,5 @@ func (s *api) uninstall(context.Context) (string, error) {
 		time.Sleep(300 * time.Millisecond)
 		s.a.uninstall(true)
 	}()
-	return "Hardcover sync was removed from this Kindle.", nil
+	return "Endpaper was removed from this Kindle.", nil
 }

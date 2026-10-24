@@ -101,7 +101,7 @@ Proposed rule (**to confirm with a test**):
 - The Kindle library already lists `KUAL.sh` (type PDOC, mime
   `text/x-shellscript`), and tapping it starts
   `com.notmarek.shell_integration.launcher` (seen in the events test). So this
-  jailbreak runs **`.sh` scriptlets from the library**. Idea: one file `documents/Hardcover.sh`:
+  jailbreak runs **`.sh` scriptlets from the library**. Idea: one file `documents/Endpaper.sh`:
   tap it → install/start daemon, show sign-in code if needed.
 - UI (user decision 2026-10-24): a **Mesquite page** opened by the
   scriptlet (sign in with QR, status, actions, uninstall). Minor writes to
