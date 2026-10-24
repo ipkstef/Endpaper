@@ -114,9 +114,6 @@ func (r *RateSync) Run(ctx context.Context) (sent int, err error) {
 		return 0, err
 	}
 	_, err = r.collect(ctx, st)
-	if !r.SyncShelves {
-		clear(st.Shelves) // choices saved by an older version
-	}
 	shelves := make(map[string]int, len(st.Shelves))
 	for k, v := range st.Shelves {
 		shelves[k] = v

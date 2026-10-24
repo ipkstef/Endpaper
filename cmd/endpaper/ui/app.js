@@ -129,7 +129,7 @@
       setText("pending", String(s.pending));
     }
     // Poll fast only while waiting for something.
-    schedule(login.active || waitSince || msgAt || (s.signedIn && !s.user) ? 4000 : 30000);
+    schedule(login.active || waitSince || msgAt || s.checking || (s.signedIn && !s.user) ? 4000 : 30000);
   }
 
   function schedule(ms) {

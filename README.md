@@ -108,8 +108,8 @@ use **Uninstall**.
 ## Privacy
 
 Your Hardcover sign-in stays on the Kindle (`/var/local/endpaper`). The
-program talks to Hardcover, and, while the Hardcover page is open, at most
-once a day to GitHub to look for a new version. Highlights and notes are
+program talks to Hardcover, and, while the Endpaper page is open, at most
+once an hour to GitHub to look for a new version. Highlights and notes are
 sent as private entries. Nothing else is collected.
 
 ## Troubleshooting

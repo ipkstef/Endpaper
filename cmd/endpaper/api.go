@@ -138,12 +138,13 @@ type statusOut struct {
 	Login      *loginState `json:"login,omitempty"`
 	Update     string      `json:"update,omitempty"` // newer release tag
 	UpdateURL  string      `json:"updateURL,omitempty"`
+	Checking   bool        `json:"checking,omitempty"` // update check running
 }
 
 func (s *api) status(context.Context) (any, error) {
 	out := statusOut{Version: version}
 	if s.upd != nil {
-		if out.Update = s.upd.available(version); out.Update != "" {
+		if out.Update, out.Checking = s.upd.available(version); out.Update != "" {
 			out.UpdateURL = releasesURL
 		}
 	}

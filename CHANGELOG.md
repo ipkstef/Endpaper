@@ -6,6 +6,10 @@
   deletes anything on its own; only the **Uninstall** button removes it.
 - Each tap on Endpaper opens a fresh page (an old page that was still
   open is closed first).
+- Update banner: checked when the page is open, at most hourly (was
+  daily); it shows within seconds; a failed check is retried and logged.
+- Removed code that only served early test installs (the `hcbridge`
+  move, the old highlight ID format, old saved shelf choices).
 
 ## v0.1.1 — 2026-10-24
 - "Sync now" shows when the check is done ("Done. …"); old messages clear.

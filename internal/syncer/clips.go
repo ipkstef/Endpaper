@@ -90,11 +90,6 @@ func (c *ClipSync) Run(ctx context.Context, all bool) (sent int, err error) {
 	if pruned := pruneSent(st, clips); pruned > 0 {
 		c.S.logf("clips: %d entries of deleted clippings removed from the sent list", pruned)
 	}
-	if migrateIDs(st, clips) {
-		if err := c.save(st); err != nil {
-			return 0, err
-		}
-	}
 
 	if !st.Baseline && !all {
 		for _, cl := range clips {
@@ -236,8 +231,7 @@ func (c *ClipSync) sendBook(ctx context.Context, title, author string, clips []c
 // pruneSent removes sent-list entries whose clipping is no longer in
 // My Clippings.txt (deleted by the user or the Kindle). They can never be
 // sent again, so the list does not grow forever. An empty parse result is
-// ignored (a file being rewritten must not clear the list). Entries of the
-// old ID format are kept: migrateIDs moves them.
+// ignored (a file being rewritten must not clear the list).
 func pruneSent(st *ClipState, clips []clippings.Clip) int {
 	if len(clips) == 0 {
 		return 0
@@ -245,7 +239,6 @@ func pruneSent(st *ClipState, clips []clippings.Clip) int {
 	keep := make(map[string]bool, 2*len(clips))
 	for _, cl := range clips {
 		keep[cl.ID()] = true
-		keep[cl.LegacyID()] = true
 	}
 	n := 0
 	for id := range st.Sent {
@@ -255,26 +248,6 @@ func pruneSent(st *ClipState, clips []clippings.Clip) int {
 		}
 	}
 	return n
-}
-
-// migrateIDs moves entries of the sent list from the old, time-zone-based
-// clip ID to the new one. It reports if anything changed.
-func migrateIDs(st *ClipState, clips []clippings.Clip) bool {
-	changed := false
-	for _, cl := range clips {
-		old, id := cl.LegacyID(), cl.ID()
-		if old == id {
-			continue
-		}
-		if jid, ok := st.Sent[old]; ok {
-			if _, done := st.Sent[id]; !done {
-				st.Sent[id] = jid
-			}
-			delete(st.Sent, old)
-			changed = true
-		}
-	}
-	return changed
 }
 
 const saveEvery = 20

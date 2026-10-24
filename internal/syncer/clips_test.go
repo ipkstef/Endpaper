@@ -122,29 +122,14 @@ func TestLocationToPage(t *testing.T) {
 	}
 }
 
-// Clips sent with the old (time-zone-based) ID are not sent again.
-func TestMigrateIDs(t *testing.T) {
-	cl, err := clippings.Parse(strings.NewReader("Red Rising (Pierce Brown)\n- Your Highlight on Location 6145-6146 | Added on Monday, September 28, 2026 1:03:31 AM\n\nText\n==========\n"))
-	if err != nil || len(cl) != 1 {
-		t.Fatal(cl, err)
-	}
-	st := &ClipState{Sent: map[string]int{cl[0].LegacyID(): 42}}
-	if !migrateIDs(st, cl) || st.Sent[cl[0].ID()] != 42 || len(st.Sent) != 1 {
-		t.Fatalf("sent %v", st.Sent)
-	}
-	if migrateIDs(st, cl) {
-		t.Fatal("second run changed state")
-	}
-}
-
 // Entries of clippings no longer in the file are removed; others stay.
 func TestPruneSent(t *testing.T) {
 	cl, _ := clippings.Parse(strings.NewReader("Red Rising (Pierce Brown)\n- Your Highlight on Location 1-2 | Added on Monday, September 28, 2026 1:03:31 AM\n\nText\n==========\n"))
-	st := &ClipState{Sent: map[string]int{cl[0].ID(): 1, "gone": 2, cl[0].LegacyID(): 3}}
-	if n := pruneSent(st, cl); n != 1 || len(st.Sent) != 2 {
+	st := &ClipState{Sent: map[string]int{cl[0].ID(): 1, "gone": 2}}
+	if n := pruneSent(st, cl); n != 1 || len(st.Sent) != 1 {
 		t.Fatalf("pruned %d, left %v", n, st.Sent)
 	}
-	if n := pruneSent(st, nil); n != 0 || len(st.Sent) != 2 {
+	if n := pruneSent(st, nil); n != 0 || len(st.Sent) != 1 {
 		t.Fatalf("empty parse pruned %d", n)
 	}
 }
