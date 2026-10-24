@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#e6e5e1">
 <title>Endpaper — Kindle to Hardcover sync</title>
 <meta name="description" content="Endpaper is a native Kindle to Hardcover.app sync. Read in the stock Kindle reader; your progress, finished books, ratings and highlights go to Hardcover.">
 <meta property="og:title" content="Endpaper — Kindle to Hardcover sync">
@@ -13,26 +15,16 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
+  /* Light only: the logo's own look, black ink on warm paper. */
   :root {
-    --paper: #f4f2ee;
-    --card: #fbfaf8;
+    color-scheme: light;
+    --paper: #e6e5e1;
+    --card: #efeeea;
     --ink: #161616;
-    --muted: #5d5a55;
-    --line: #d9d5ce;
+    --muted: #55524d;
+    --line: #cfccc5;
     --accent: #161616;
-    --accent-ink: #fbfaf8;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --paper: #151514;
-      --card: #1d1d1b;
-      --ink: #eeebe5;
-      --muted: #a8a49c;
-      --line: #34332f;
-      --accent: #eeebe5;
-      --accent-ink: #151514;
-    }
-    .logo { filter: invert(1); mix-blend-mode: screen; }
+    --accent-ink: #f4f3f0;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
