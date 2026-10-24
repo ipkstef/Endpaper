@@ -1,6 +1,6 @@
 #!/bin/sh
 # Name: Endpaper
-# Author: Endpaper (github.com/ipkstef/kindle-hardcover-bridge)
+# Author: Endpaper (github.com/ipkstef/endpaper)
 # DontUseFBInk
 #
 # Tap "Endpaper" in the library: starts background sync and opens the

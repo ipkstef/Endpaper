@@ -16,11 +16,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/daemon"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/events"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/metrics"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/screen"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/syncer"
+	"github.com/ipkstef/endpaper/internal/daemon"
+	"github.com/ipkstef/endpaper/internal/events"
+	"github.com/ipkstef/endpaper/internal/metrics"
+	"github.com/ipkstef/endpaper/internal/screen"
+	"github.com/ipkstef/endpaper/internal/syncer"
 )
 
 const (

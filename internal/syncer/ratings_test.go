@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/store"
 )
 
 func (fakeBooks) BookByKey(_ context.Context, key string) (*book.Local, error) {

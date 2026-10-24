@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/atomicfile"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/metrics"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
+	"github.com/ipkstef/endpaper/internal/atomicfile"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/metrics"
+	"github.com/ipkstef/endpaper/internal/store"
 )
 
 // BookByKey is the part of the cc.db reader the rating sync needs.

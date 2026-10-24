@@ -11,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/clippings"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/events"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/metrics"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/screen"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/syncer"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/clippings"
+	"github.com/ipkstef/endpaper/internal/events"
+	"github.com/ipkstef/endpaper/internal/metrics"
+	"github.com/ipkstef/endpaper/internal/screen"
+	"github.com/ipkstef/endpaper/internal/store"
+	"github.com/ipkstef/endpaper/internal/syncer"
 )
 
 // selfTestFile is the result file in the install folder.

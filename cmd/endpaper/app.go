@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/appreg"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/atomicfile"
+	"github.com/ipkstef/endpaper/internal/appreg"
+	"github.com/ipkstef/endpaper/internal/atomicfile"
 )
 
 const (

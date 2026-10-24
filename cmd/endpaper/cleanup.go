@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/appreg"
+	"github.com/ipkstef/endpaper/internal/appreg"
 )
 
 const (

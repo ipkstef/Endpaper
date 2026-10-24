@@ -3,9 +3,9 @@ package syncer
 import (
 	"testing"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/mobi"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/sidecar"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/mobi"
+	"github.com/ipkstef/endpaper/internal/sidecar"
 )
 
 func TestResolvePercentOrder(t *testing.T) {

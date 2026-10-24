@@ -18,7 +18,7 @@ import (
 
 	"rsc.io/qr"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/daemon"
+	"github.com/ipkstef/endpaper/internal/daemon"
 )
 
 // api is the daemon's local HTTP interface for our Mesquite page. It

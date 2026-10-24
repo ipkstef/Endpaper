@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/config"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/config"
+	"github.com/ipkstef/endpaper/internal/hardcover"
 )
 
 func TestAPI(t *testing.T) {

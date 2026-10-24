@@ -1,4 +1,4 @@
-module github.com/ipkstef/kindle-hardcover-bridge
+module github.com/ipkstef/endpaper
 
 go 1.23.0
 

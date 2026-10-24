@@ -32,7 +32,7 @@ should work but are not tested yet; please report results.
 ## Install
 
 1. Download `endpaper-<version>.zip` from the
-   [releases page](https://github.com/ipkstef/kindle-hardcover-bridge/releases).
+   [releases page](https://github.com/ipkstef/endpaper/releases).
 2. Connect the Kindle to your computer with USB.
 3. Unzip the file onto the Kindle drive. You get:
    - `documents/Endpaper.sh`: the **Endpaper** item in your library

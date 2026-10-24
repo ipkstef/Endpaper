@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/atomicfile"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
+	"github.com/ipkstef/endpaper/internal/atomicfile"
+	"github.com/ipkstef/endpaper/internal/store"
 )
 
 // titleRule is the version of the title compare rule. Title-based matches

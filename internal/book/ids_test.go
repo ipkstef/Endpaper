@@ -3,7 +3,7 @@ package book
 import (
 	"testing"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/mobi"
+	"github.com/ipkstef/endpaper/internal/mobi"
 )
 
 func TestISBN(t *testing.T) {

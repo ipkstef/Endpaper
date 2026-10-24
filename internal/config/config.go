@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/atomicfile"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/atomicfile"
+	"github.com/ipkstef/endpaper/internal/hardcover"
 )
 
 // Default paths on the Kindle.

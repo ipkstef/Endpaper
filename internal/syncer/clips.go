@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/atomicfile"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/clippings"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/mobi"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
+	"github.com/ipkstef/endpaper/internal/atomicfile"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/clippings"
+	"github.com/ipkstef/endpaper/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/mobi"
+	"github.com/ipkstef/endpaper/internal/store"
 )
 
 // Books is the part of the cc.db reader the clip sync needs.

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
+	"github.com/ipkstef/endpaper/internal/book"
 
 	_ "modernc.org/sqlite" // pure Go, no cgo
 )

@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/hardcover"
 )
 
 // Catalog is the part of the Hardcover client the resolver needs.

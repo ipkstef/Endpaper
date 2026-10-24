@@ -71,9 +71,8 @@ Name (user decision 2026-10-24): **Endpaper** — "a native Kindle →
 hardcover.app sync". Binary, folders and library item are `endpaper`
 (`/mnt/us/endpaper`, `/var/local/endpaper`, `documents/Endpaper.sh`, app id
 `io.github.ipkstef.endpaper`). The first run moves an old `hcbridge`
-install (`migrateLegacy`). The GitHub repo is still
-`kindle-hardcover-bridge` (rename is the user's choice; module path and
-URLs follow it).
+install (`migrateLegacy`). GitHub repo: `ipkstef/endpaper` (renamed from
+`kindle-hardcover-bridge` 2026-10-24); module path `github.com/ipkstef/endpaper`.
 
 Core sync is done and **works on device** (e118f27): progress (cc.db,
 sleep sidecar fallback), auto-add, finish, re-read, ratings + result box,
@@ -98,7 +97,7 @@ License MIT. Release: push tag `vX.Y.Z` → `.github/workflows/release.yml`
 (needs repo secret `HC_CLIENT_ID`). The page shows an update banner when
 GitHub has a newer release (checked at most daily, only while the page is
 open; release builds only). Open: public repo + registered public client
-ID, first tagged release, old-kernel device check.
+ID, old-kernel device check. v0.1.0 tagged 2026-10-24.
 Go version still open (needs an old-kernel device); builds use Go 1.23.
 
 ## Docs

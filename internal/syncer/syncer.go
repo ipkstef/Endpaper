@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/config"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/match"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/mobi"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/sidecar"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/config"
+	"github.com/ipkstef/endpaper/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/match"
+	"github.com/ipkstef/endpaper/internal/mobi"
+	"github.com/ipkstef/endpaper/internal/sidecar"
 )
 
 // FinishedPercent: above this, the book counts as finished (user decision).

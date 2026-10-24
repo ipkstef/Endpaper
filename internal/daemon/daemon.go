@@ -16,11 +16,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/atomicfile"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/readers"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/syncer"
+	"github.com/ipkstef/endpaper/internal/atomicfile"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/readers"
+	"github.com/ipkstef/endpaper/internal/store"
+	"github.com/ipkstef/endpaper/internal/syncer"
 )
 
 // Source is the local reading state (cc.db).

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/readers"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/store"
+	"github.com/ipkstef/endpaper/internal/readers"
+	"github.com/ipkstef/endpaper/internal/store"
 )
 
 // dbState keeps State in the store: one row per book in progress, pending

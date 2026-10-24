@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	latestURL = "https://api.github.com/repos/ipkstef/kindle-hardcover-bridge/releases/latest"
+	latestURL = "https://api.github.com/repos/ipkstef/endpaper/releases/latest"
 	// ReleasesURL is shown on the page when an update is available.
-	releasesURL = "github.com/ipkstef/kindle-hardcover-bridge/releases"
+	releasesURL = "github.com/ipkstef/endpaper/releases"
 	// updateEvery: look for a new release at most this often, and only
 	// while the page is open (no background network use for this).
 	updateEvery = 24 * time.Hour

@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/book"
-	"github.com/ipkstef/kindle-hardcover-bridge/internal/hardcover"
+	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/hardcover"
 )
 
 // fakeHC answers GraphQL by the first matching operation name and records
