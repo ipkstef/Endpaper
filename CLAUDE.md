@@ -122,3 +122,5 @@ Index: `docs/README.md`.
 - Mark anything not verified on a real device or in real docs as **UNVERIFIED**.
 - Prefer small, testable steps. The user has one Kindle for testing.
 - Keep answers short. Use simple technical English.
+- Push directly to `main` (user decision 2026-10-24). Releases: the user
+  publishes a release with a new `vX.Y.Z` tag on github.com.
