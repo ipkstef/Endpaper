@@ -281,6 +281,13 @@ type Me struct {
 	PrivacyID *int `json:"account_privacy_setting_id"`
 }
 
+// ForgetMe drops the cached user (after sign-out or a new sign-in).
+func (c *Client) ForgetMe() {
+	c.mu.Lock()
+	c.me = nil
+	c.mu.Unlock()
+}
+
 // Me returns the signed-in user. Cached for an hour.
 func (c *Client) Me(ctx context.Context) (*Me, error) {
 	c.mu.Lock()

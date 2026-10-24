@@ -18,12 +18,13 @@ import (
 // is unmounted while USB is connected.
 //
 // The log also lives in /var/local: a daemon must not keep writing to
-// /mnt/us, which disappears in USB mode. "Save log to USB" copies it.
+// /mnt/us, which disappears in USB mode. "Save log" copies it to the
+// install folder (USBLogName).
 const (
 	DefaultStateDir = "/var/local/hcbridge"
 	DefaultCCDB     = "/var/local/cc.db"
 	DefaultLog      = "/var/local/hcbridge/hcbridge.log"
-	USBLog          = "/mnt/us/hcbridge.log"
+	USBLogName      = "hcbridge-log.txt"
 )
 
 // TokenStore saves the OAuth token as JSON with mode 0600.

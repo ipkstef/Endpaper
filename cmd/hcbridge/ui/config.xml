@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<!-- Mesquite (WAF) app description. Based on the Kindle store's file and
+     github.com/penguins184/IllusionChess. local-port-access lets the page
+     reach our daemon on 127.0.0.1. -->
+<widget id="io.github.ipkstef.hcbridge" version="1.0" viewmodes="application"
+    xmlns="http://www.w3.org/ns/widgets"
+    xmlns:kindle="http://kindle.amazon.com/ns/widget-extensions">
+    <name xml:lang="en">Hardcover</name>
+    <description xml:lang="en">Hardcover reading sync</description>
+    <content src="index.html" />
+    <kindle:permissions>
+        <kindle:permission name="local-port-access" />
+    </kindle:permissions>
+    <kindle:network>
+        <kindle:asset key="enableCaching" value="false" />
+    </kindle:network>
+    <kindle:chrome>
+        <kindle:asset key="configureSearchBar" value="system" />
+    </kindle:chrome>
+    <kindle:gestures>
+        <kindle:param name="tap" value="yes" properties="fire_on_tap:1 max_updown_delta:0" />
+        <kindle:param name="swipe" value="yes" />
+    </kindle:gestures>
+    <feature name="http://kindle.amazon.com/apis" required="true">
+        <param name="appmgr" value="yes" />
+        <param name="chrome" value="yes" />
+        <param name="gestures" value="yes" />
+    </feature>
+    <kindle:settings>
+        <kindle:setting name="internetRequired" value="no" />
+        <kindle:setting name="saveContext" value="no" />
+        <kindle:setting name="disable-wua-features" value="yes" />
+    </kindle:settings>
+</widget>

@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -48,8 +49,10 @@ func (a *app) statePath() string { return filepath.Join(a.stateDir, "state.json"
 //   - inotify: cc.db-journal deleted (DB commit) or cc.db-wal modified
 //   - LIPC cmd: connectionAvailable (Wi-Fi back: retry pending)
 //   - a safety poll every 15 min
+//   - our page (local API, see api.go): sign in, sync now, ...
 //
-// Each source is optional; the daemon works with any subset.
+// Each source is optional; the daemon works with any subset. It also runs
+// when not signed in (the page signs in through it); then it sends nothing.
 func (a *app) daemon(ctx context.Context) error {
 	debug.SetMemoryLimit(memLimit)
 	if err := os.MkdirAll(a.stateDir, 0o700); err != nil {
@@ -106,6 +109,15 @@ func (a *app) daemon(ctx context.Context) error {
 	}
 
 	var caps []string
+	importAll := new(atomic.Bool)
+	srv := &api{a: a, key: newKey(), fire: fire, stop: cancel, importAll: importAll}
+	if port, err := srv.serve(ctx); err != nil {
+		caps = append(caps, "page api: "+err.Error())
+	} else if err := installUI(port, srv.key); err != nil {
+		caps = append(caps, "page: "+err.Error())
+	} else {
+		caps = append(caps, fmt.Sprintf("page api: 127.0.0.1:%d", port))
+	}
 	onApp := func(line string) {
 		if strings.Contains(line, "appPaused") && strings.Contains(line, "com.lab126.booklet.reader") {
 			fire("left book")
@@ -200,7 +212,8 @@ func (a *app) daemon(ctx context.Context) error {
 		},
 		After: func(ctx context.Context) {
 			runRatings(ctx)
-			if n, err := clips.Run(ctx, false); err != nil {
+			all := importAll.Swap(false)
+			if n, err := clips.Run(ctx, all); err != nil {
 				if !a.client().Offline() {
 					log.Printf("daemon: clips: %v (retry at next check)", err)
 				}
@@ -224,7 +237,20 @@ func (a *app) daemon(ctx context.Context) error {
 	// clock stops while the Kindle sleeps, so "one hour" never came in 3
 	// days of mostly-asleep use (device log 2026-10-01).
 	counts, countsAt := map[string]int{}, time.Now().Round(0)
+	signedOut := false // logged once per sign-out
 	scan := func(why string) {
+		// The user deleted the install folder: remove the rest and exit.
+		if installGone(a.home, usbMounted) {
+			a.uninstall(false)
+		}
+		if _, err := a.store.Load(); err != nil {
+			if !signedOut {
+				log.Printf("daemon: not signed in, waiting (%v)", err)
+				signedOut = true
+			}
+			return
+		}
+		signedOut = false
 		sctx, scancel := context.WithTimeout(ctx, 5*time.Minute)
 		defer scancel()
 		// Quiet log: events are counted and summed up once an hour; a scan

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardcover</title>
+<link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<div class="page">
+  <h1>Hardcover Sync</h1>
+
+  <div id="loading" class="box"><p>Loading...</p></div>
+
+  <div id="off" class="box hidden">
+    <p><b>Background sync is not running.</b></p>
+    <p>Go to your library and tap <b>Hardcover</b> to start it.</p>
+    <p class="small">If you still see this after that, see Troubleshooting in the README.</p>
+  </div>
+
+  <div id="signin" class="box hidden">
+    <p>Connect this Kindle to your Hardcover account.</p>
+    <div class="btn" id="btnLogin">Sign in</div>
+    <div id="code" class="hidden">
+      <p>With your phone, scan this code:</p>
+      <img id="qr" alt="">
+      <p>Or open <b id="url"></b> and enter:</p>
+      <p class="code" id="ucode"></p>
+      <p class="small">Waiting for you to approve...</p>
+      <div class="btn secondary" id="btnCancel">Cancel</div>
+    </div>
+  </div>
+
+  <div id="status" class="box hidden">
+    <p>Signed in as <b id="user">...</b></p>
+    <p>Background sync is <b>on</b>.</p>
+    <p>Last check: <span id="last">-</span></p>
+    <p>Last result: <span id="result">-</span></p>
+    <p id="pendingRow" class="hidden">Waiting to retry: <span id="pending"></span></p>
+  </div>
+
+  <p id="msg" class="msg hidden"></p>
+  <pre id="checks" class="hidden"></pre>
+
+  <div id="confirm" class="box hidden">
+    <p id="confirmText"></p>
+    <div class="btn" id="btnYes">Yes</div>
+    <div class="btn secondary" id="btnNo">Cancel</div>
+  </div>
+
+  <div id="actions" class="hidden">
+    <div class="btn needs-signin" data-act="sync">Sync now</div>
+    <div class="btn needs-signin" data-act="import"
+      data-confirm="Send all old highlights and notes to Hardcover as private journal entries?">Import old highlights</div>
+    <div class="btn secondary" data-act="check">Check setup</div>
+    <div class="btn secondary" data-act="log">Save log for support</div>
+    <div class="btn secondary needs-signin" data-act="logout"
+      data-confirm="Sign out of Hardcover on this Kindle?">Sign out</div>
+    <div class="btn secondary" data-act="stop"
+      data-confirm="Stop background sync until you tap Hardcover again?">Stop sync</div>
+    <div class="btn secondary" data-act="uninstall"
+      data-confirm="Remove Hardcover sync from this Kindle? This deletes the app, its settings and your sign-in. Your books are not changed.">Uninstall</div>
+  </div>
+
+  <p class="small">Close: use the Home button. Version <span id="ver"></span></p>
+</div>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

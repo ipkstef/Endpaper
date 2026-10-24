@@ -54,6 +54,8 @@ best data. A missing backend must never crash the daemon.
 
 ## Install target (user view)
 1. Jailbreak Kindle.
-2. Install package (likely a KUAL extension).
-3. Open it → Kindle shows a code/QR → approve on phone.
-4. Done. Daemon auto-starts on boot.
+2. Unzip the release onto the Kindle drive (`documents/Hardcover.sh` +
+   `hcbridge/`).
+3. Tap "Hardcover" in the library → our page shows a code/QR → approve on
+   phone.
+4. Done. After a reboot, tap "Hardcover" once (no autostart at boot).

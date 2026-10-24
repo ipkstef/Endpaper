@@ -1,5 +1,10 @@
 // Command hcbridge syncs Kindle reading progress to Hardcover.
 //
+// Users only tap "Hardcover" in the library (documents/Hardcover.sh), which
+// runs "hcbridge app": it starts the daemon and opens our page. The other
+// commands are for development and support (SSH).
+//
+//	hcbridge app      start the daemon if needed, open the page
 //	hcbridge login    sign in with a device code (shown on the Kindle screen)
 //	hcbridge daemon   run in the background, sync on events
 //	hcbridge stop     stop the daemon
@@ -10,7 +15,6 @@
 //	hcbridge clipsall send all highlights/notes, also old ones
 //	hcbridge savelog  copy the log to the USB drive
 //	hcbridge selftest check all parts, show OK / FAIL (no writes)
-//	hcbridge dialogprobe collect dialog files and test pillow boxes (research)
 //	hcbridge whoami   show the signed-in user
 //	hcbridge logout   delete the saved token
 package main
@@ -62,6 +66,7 @@ type app struct {
 	scope    string
 	stateDir string
 	logPath  string
+	home     string // install folder on the USB drive (empty: development run)
 
 	hc    *hardcover.Client // one per process: rate limiter + cached "me"
 	sy    *syncer.Syncer
@@ -79,8 +84,9 @@ func main() {
 	logPath := fs.String("log", config.DefaultLog, "log file (empty: stderr only)")
 	scope := fs.String("scope", hardcover.DefaultScope, "OAuth scopes")
 	row := fs.Int("row", 3, "first screen row for messages")
+	home := fs.String("home", "", "install folder, e.g. /mnt/us/hcbridge (deleting it uninstalls)")
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: hcbridge login|daemon|stop|status|sync|identify|clips|clipsall|savelog|selftest|dialogprobe|whoami|logout [flags]")
+		fmt.Fprintln(os.Stderr, "usage: hcbridge app|login|daemon|stop|status|sync|identify|clips|clipsall|savelog|selftest|whoami|logout [flags]")
 		os.Exit(2)
 	}
 	cmd := os.Args[1]
@@ -94,12 +100,15 @@ func main() {
 		scope:    *scope,
 		stateDir: *state,
 		logPath:  *logPath,
+		home:     *home,
 	}
 	a.oauth = hardcover.NewOAuth(httpClient(), strings.TrimSpace(*cid))
 
 	ctx := context.Background()
 	var err error
 	switch cmd {
+	case "app":
+		err = a.launch(ctx)
 	case "login":
 		err = a.login(ctx)
 	case "daemon":
@@ -115,11 +124,12 @@ func main() {
 	case "clips", "clipsall":
 		err = a.clipsNow(ctx, cmd == "clipsall")
 	case "savelog":
-		err = a.saveLog()
+		var p string
+		if p, err = a.saveLogFile(); err == nil {
+			a.screen.Show("Log saved: "+strings.TrimPrefix(p, usbRoot+"/"), "Connect USB to copy it.")
+		}
 	case "selftest":
 		err = a.selfTest(ctx)
-	case "dialogprobe":
-		err = a.dialogProbe(ctx)
 	case "whoami":
 		err = a.whoami(ctx)
 	case "logout":
@@ -137,10 +147,10 @@ func main() {
 		log.Printf("%s: error: %v", cmd, err)
 		msg := err.Error()
 		if errors.Is(err, config.ErrNoToken) || errors.Is(err, hardcover.ErrUnauthorized) {
-			msg = "Not signed in. Use 'Sign in' first."
+			msg = "Not signed in. Tap Hardcover to sign in."
 		}
 		if cmd != "daemon" { // the daemon never draws on the screen
-			a.screen.Show("Hardcover: ERROR", trim(msg, 46), "Details: Save log to USB")
+			a.screen.Show("Hardcover: ERROR", trim(msg, 46), "Details: hcbridge log (Save log)")
 		}
 		os.Exit(1)
 	}
@@ -180,7 +190,7 @@ func (a *app) login(ctx context.Context) error {
 	msg := "Background sync is ON."
 	if err := a.startDaemon(); err != nil {
 		log.Printf("login: start daemon: %v", err)
-		msg = "Tap 'Start background sync'."
+		msg = "Tap Hardcover again to start sync."
 	}
 	a.screen.Show("Signed in as @"+me.Username+".", msg, "",
 		"Tip: unlink Goodreads on the Kindle",
@@ -190,7 +200,7 @@ func (a *app) login(ctx context.Context) error {
 }
 
 // startDaemon starts "hcbridge daemon" as its own background process (new
-// session, output to the log), like the menu's "Start background sync".
+// session, output to the log).
 func (a *app) startDaemon() error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -229,7 +239,7 @@ func (a *app) identify(ctx context.Context) error {
 	}
 	res, ub, err := a.syncer().Identify(ctx, local)
 	if errors.Is(err, syncer.ErrNotFound) {
-		a.screen.Show("Hardcover: book not found", trim(local.Title, 46), "Details: Save log to USB")
+		a.screen.Show("Hardcover: book not found", trim(local.Title, 46))
 		return nil
 	}
 	if err != nil {
@@ -305,8 +315,20 @@ func (a *app) clipsNow(ctx context.Context, all bool) error {
 	return nil
 }
 
-// saveLog copies the log (and the rotated part) to the USB drive.
-func (a *app) saveLog() error {
+// usbDir is where files for the user go: the install folder, else the
+// drive's root.
+func (a *app) usbDir() string {
+	if a.home != "" {
+		if _, err := os.Stat(a.home); err == nil {
+			return a.home
+		}
+	}
+	return usbRoot
+}
+
+// saveLogFile copies the log (and the rotated part) to the USB drive and
+// returns the file's path.
+func (a *app) saveLogFile() (string, error) {
 	// Header: the state at save time, so one file answers most questions.
 	hdr := fmt.Sprintf("== hcbridge %s, saved %s ==\n", version, time.Now().UTC().Format(time.RFC3339))
 	if pid := a.running(); pid != 0 {
@@ -319,7 +341,7 @@ func (a *app) saveLog() error {
 			db.Count(store.TProgress), db.Count(store.TBookMap), db.Count(store.TClips),
 			db.Count(store.TPending), db.Count(store.TRatings))
 	}
-	if b, err := os.ReadFile(selfTestOut); err == nil {
+	if b, err := os.ReadFile(filepath.Join(a.usbDir(), selfTestFile)); err == nil {
 		hdr += "last self-test:\n" + string(b)
 	}
 	buf := []byte(hdr + "== log ==\n")
@@ -328,11 +350,11 @@ func (a *app) saveLog() error {
 			buf = append(buf, b...)
 		}
 	}
-	if err := os.WriteFile(config.USBLog, buf, 0o644); err != nil {
-		return err
+	out := filepath.Join(a.usbDir(), config.USBLogName)
+	if err := os.WriteFile(out, buf, 0o644); err != nil {
+		return "", err
 	}
-	a.screen.Show("Log saved: "+filepath.Base(config.USBLog), "Connect USB to copy it.")
-	return nil
+	return out, nil
 }
 
 // client returns the GraphQL client (one per process). It refreshes the

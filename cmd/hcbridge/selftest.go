@@ -20,15 +20,31 @@ import (
 	"github.com/ipkstef/kindle-hardcover-bridge/internal/syncer"
 )
 
-const selfTestOut = "/mnt/us/hcbridge-selftest.txt"
+// selfTestFile is the result file in the install folder.
+const selfTestFile = "hcbridge-selftest.txt"
 
-// selfTest checks every part it can check by itself and shows OK / FAIL on
-// the screen, in the log and in /mnt/us/hcbridge-selftest.txt. It writes
-// nothing to Hardcover (book look-up only) and nothing to the Kindle's
-// files. One tap answers most "does X work on this device" questions.
+// selfTest (command line) runs the checks, tests the alert box and shows
+// the result on the screen.
 func (a *app) selfTest(ctx context.Context) error {
 	a.screen.Show("Hardcover self-test: running...")
-	var lines, screenLines []string
+	_, screenLines := a.checks(ctx)
+	err := screen.Alert("Hardcover self-test", "This box closes by itself in 4 s.", 4000)
+	l := "OK   alert box: shown"
+	if err != nil {
+		l = "FAIL alert box: " + err.Error()
+	}
+	log.Printf("selftest: %s", l)
+	screenLines = append(screenLines, l)
+	time.Sleep(5 * time.Second) // let the alert close before drawing the result
+	a.screen.Show(append([]string{"Hardcover self-test (also in", selfTestFile + "):"}, screenLines...)...)
+	return nil
+}
+
+// checks tests every part it can test by itself (OK / FAIL lines), also
+// written to the log and to hcbridge-selftest.txt. It writes nothing to
+// Hardcover (book look-up only) and nothing to the Kindle's files. Used by
+// the page's "Check setup".
+func (a *app) checks(ctx context.Context) (lines, screenLines []string) {
 	res := func(ok bool, name, detail string) {
 		tag := "OK  "
 		if !ok {
@@ -53,13 +69,22 @@ func (a *app) selfTest(ctx context.Context) error {
 		res(false, "background sync", "not running")
 	}
 
+	// Page.
+	if p, v := uiDaemon(); p != 0 {
+		res(v == version, "page", "installed ("+v+")")
+	} else {
+		res(false, "page", "not installed")
+	}
+	_, err := os.Stat(mesquite)
+	res(err == nil, "mesquite", errText(err, "found"))
+
 	// Kindle tools and events.
 	for _, t := range []string{"lipc-wait-event", "lipc-get-prop", "lipc-set-prop", "eips"} {
 		_, err := exec.LookPath(t)
 		res(err == nil, t, map[bool]string{true: "found", false: "missing"}[err == nil])
 	}
 	wctx, cancel := context.WithCancel(ctx)
-	_, err := events.WatchDir(wctx, filepath.Dir(a.db.Path), func(string, uint32) {})
+	_, err = events.WatchDir(wctx, filepath.Dir(a.db.Path), func(string, uint32) {})
 	cancel()
 	res(err == nil, "inotify", errText(err, "ok"))
 
@@ -131,17 +156,11 @@ func (a *app) selfTest(ctx context.Context) error {
 		}
 	}
 
-	// Alert box (closes by itself).
-	err = screen.Alert("Hardcover self-test", "This box closes by itself in 4 s.", 4000)
-	res(err == nil, "alert box", errText(err, "shown"))
-
 	out := strings.Join(lines, "\n") + "\n"
-	if err := os.WriteFile(selfTestOut, []byte(out), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(a.usbDir(), selfTestFile), []byte(out), 0o644); err != nil {
 		log.Printf("selftest: %v", err)
 	}
-	time.Sleep(5 * time.Second) // let the alert close before drawing the result
-	a.screen.Show(append([]string{"Hardcover self-test (also in", "hcbridge-selftest.txt):"}, screenLines...)...)
-	return nil
+	return lines, screenLines
 }
 
 func errText(err error, ok string) string {

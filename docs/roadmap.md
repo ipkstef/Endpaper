@@ -103,6 +103,10 @@ Proposed rule (**to confirm with a test**):
   `com.notmarek.shell_integration.launcher` (seen in the events test). So this
   jailbreak runs **`.sh` scriptlets from the library**. Idea: one file `documents/Hardcover.sh`:
   tap it → install/start daemon, show sign-in code if needed.
+- UI (user decision 2026-10-24): a **Mesquite page** opened by the
+  scriptlet (sign in with QR, status, actions, uninstall). Minor writes to
+  `/var/local/appreg.db` (our rows only, backup first) are accepted when
+  they improve the app. Uninstall: page button or delete the folder.
 - Distribution (user decision 2026-10-02): **no KPM, no KUAL.** A zip on
   GitHub releases: one scriptlet `Hardcover.sh` + the `hcbridge` folder,
   copied by USB. Works on old (hotfix) and new (hdnext) jailbreaks.

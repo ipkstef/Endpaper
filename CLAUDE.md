@@ -56,74 +56,38 @@ internal/events/     LIPC + inotify watchers
 internal/book/       book identity (ASIN, title, author, ISBN)
 internal/hardcover/  OAuth device flow, token refresh, GraphQL client
 internal/config/     config + token storage
-cmd/hcbridge/        prototype CLI: login, sync, whoami, logout
-cmd/probe/           one-shot device test (see docs/probe.md)
+internal/store/      our state DB (SQLite)
+internal/appreg/     register our page in the Kindle's appreg.db
+cmd/hcbridge/        the program: app (library tap), daemon, local page API,
+                     ui/ (Mesquite page, embedded), dev commands
 internal/certs/      bundled CA roots
-packaging/           KUAL extension / install scripts
+packaging/kindle/    documents/Hardcover.sh (the library item)
 scripts/             build scripts
 docs/                context docs (read these)
 ```
 
 ## Where we left off
-Research done for FW 5.17.1: percent is in `cc.db`, written on go-Home only
-(not page turn, not sleep). See `docs/findings-bellatrix-5.17.1.md`.
+Core sync is done and **works on device** (e118f27): progress (cc.db,
+sleep sidecar fallback), auto-add, finish, re-read, ratings + result box,
+highlights/notes, offline retry, SQLite state, self-test. History of the
+research and device results: `docs/findings-bellatrix-5.17.1.md`,
+`docs/roadmap.md`.
 
-Option B prototype built (`cmd/hcbridge`, KUAL menu "Hardcover", see
-`docs/prototype.md`): device-code sign-in + one manual sync. It only syncs a book
-that is already in the user's Hardcover "Currently Reading" list and matches by
-title + author (never guesses). **Works on the user's Kindle** (sign-in +
-progress update confirmed). Sync is **forward only** (user decision).
+Distribution (user decisions 2026-10-02 … 10-24): **no KUAL, no KPM.** A
+GitHub release zip: `documents/Hardcover.sh` (scriptlet = library item) +
+`hcbridge/` folder, copied by USB. The tap runs `hcbridge app`: starts the
+daemon (also when signed out) and opens our **Mesquite page** (registered
+in `/var/local/appreg.db`; minor appreg writes are OK, user 2026-10-24).
+The page talks to the daemon over 127.0.0.1 (random port + key in
+`config.js`): sign in with QR, status, sync now, import old highlights,
+check setup, save log, sign out, stop, uninstall. Fallback without
+Mesquite: eips text screens. No autostart at boot (one tap after reboot).
+Uninstall = page button, or delete the folder: the daemon sees it gone
+(only while /mnt/us is mounted, never in USB mode) and removes the rest.
+This build is **not yet on device**; checklist in `docs/testing.md`.
 
-User goals and plan: `docs/roadmap.md` (event triggers, auto-add books,
-restart/finish, install without KUAL). Events test done: appmgrd
-`appPaused` reader + inotify on cc.db + Wi-Fi events all work (roadmap §1).
-Book matching is now a waterfall over all fields (ASIN → ISBN → library →
-search → skip), roadmap §2; **works on device** (ISBN and library steps).
-Auto-add **works on device** (Red Rising: added via ISBN, page set).
-Daemon core is **work in progress** (`hcbridge daemon`, `internal/daemon`,
-`internal/events`, `internal/syncer`): built and unit-tested, not run on the
-device. The user wants to **discuss system design before it is locked in**.
-User: syncing when sleeping **inside** a book matters (no go-Home). Sleep
-research done: sleep writes cc.db percent + `.azw3f` lpr/fpr; Wi-Fi up ~70 s
-after sleep, back ~1.5 s after wake (findings, roadmap §1b). Daemon now also
-triggers on `goingToScreenSaver`. Sidecar reader built (KRDS parser,
-`internal/sidecar`) as the 3rd position source; APNX dropped.
-Hardcover features researched (`docs/hardcover-features.md`). User decisions
-in `docs/roadmap.md` §2b. Built: finish detection (>99 % / read state 2),
-highlights+notes → private journal (`internal/clippings`, `ClipSync`).
-Daemon ran on device (finish + clips OK; double-finish bug fixed). Rating
-found in `/mnt/us/system/fmcache/fmcache.db` (`goodreads_book_ratings`,
-emptied on sleep) → `RateSync` built and **works on device**. Goodreads shelf
-choice: `goodreads_autoshelvings` (`kindle_asin`, `shelf_status`) mapped.
-API calls cut (match cache `bookmap.json`, one shelf lookup, cached `me`,
-rate limiter + 429 retry). Version 3f83ac6 **works on device**: rating,
-shelf mapping, cache, no 429; Start replaces an old daemon. **User: lock down
-core first**; later items (SQLite state DB, Rating Error dialog B+C) are in
-`docs/roadmap.md` "Later". Re-read built (Currently Reading after a finish,
-or back under 5 %). Code review 2026-09-28: HIGH fixes done (deadlock,
-offline ≠ not found, no retry limit while offline, token refresh lock,
-subtitle-safe title match, forward-only shelf, zone-free clip IDs, one
-writer goroutine, fsync writes). b991c98 **works on device** (rating,
-re-read via shelf, stop/start, offline → retry when Wi-Fi is back,
-forward-only shelf). First release = default logic only: shelf choice →
-status sync **off** (`syncShelves`), telemetry and SQLite DB later
-(roadmap "Later"). Rating box (pillow `appAlert1`) shows the real result
-~1–2 s after a star tap; Goodreads unlinked on the Kindle works better
-(stars still recorded, no error). b3b70fe **works on device**: star
-change without X (`update_rating`), duplicate books (readers lead), "Last,
-First" authors, sleep-in-book sync, clips. Core is done. Built next
-(not yet on device): SQLite state store (`internal/store`, see
-docs/decisions/embedded-db.md), no API call when the page is unchanged,
-offline mode (no network tries until Wi-Fi is back), hourly event summary
-in the log, Paused/DNF → Currently Reading on progress, daemon auto-starts
-after sign-in. 3-day run OK (one process, no errors). Added: sleep sidecar
-fallback, Self-test menu, per-sleep/go-Home log line, log header,
-replay fixtures from real device data (`internal/*/testdata`), test
-checklist per build (`docs/testing.md`). e118f27 **works on device**, self-test all OK. Open: autostart at boot /
-no-KUAL install (appreg.db, see roadmap), public client ID decision,
-old-kernel device check.
-
-Next after it works: the daemon (poll loop, send on change, Wi-Fi handling).
+Open: LICENSE (user choice), public repo + registered public client ID
+(`HC_CLIENT_ID`), release workflow, old-kernel device check.
 Go version still open (needs an old-kernel device); builds use Go 1.23.
 
 ## Docs
@@ -132,9 +96,7 @@ Go version still open (needs an old-kernel device); builds use Go 1.23.
 - `docs/hardcover-api.md` — GraphQL + OAuth device flow details
 - `docs/open-questions.md` — unknowns and risks
 - `docs/references.md` — links and prior art
-- `docs/probe.md` — device probe: what it checks, how to run it
 - `docs/findings-bellatrix-5.17.1.md` — results from the user's Kindle
-- `docs/prototype.md` — hcbridge prototype: setup and test steps
 - `docs/roadmap.md` — user goals and plan to the end product
 - `docs/hardcover-features.md` — journals, ratings, finish, re-read, scopes, limits
 - `docs/decisions/embedded-db.md` — state DB choice (modernc sqlite, later)
