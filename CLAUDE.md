@@ -1,128 +1,134 @@
-# CLAUDE.md — Endpaper (Kindle → Hardcover sync)
+# CLAUDE.md
 
-## Project goal
-A small background daemon on a **jailbroken Kindle** that reads the user's reading
-state from the **stock Amazon Kindle reader** and sends it to **Hardcover.app**.
+Guidance for AI coding assistants (and a quick orientation for human
+contributors) working on **Endpaper**, a native Kindle → Hardcover.app sync.
 
-- The user reads normally in Amazon's default reader.
-- The daemon observes: current book, position (location), percent, page (if available).
-- The daemon updates the user's Hardcover "currently reading" progress.
+## What Endpaper is
 
-## Hard constraints (do not break)
-- **No KOReader.** Do not replace or modify the Amazon reader. We only observe it.
-- **Lowest common denominator.** Must work on the oldest common jailbroken Kindle,
-  not only on the developer's one device. Assume fair tolerances.
-- **No per-model config** unless there is no other way.
-- **Simple install:** jailbreak → install package → sign in with a code → done.
-  No SSH after setup.
+A small background program for **jailbroken Kindles**. It reads the reading
+state that the **stock Amazon Kindle reader** already keeps on the device and
+sends it to [Hardcover](https://hardcover.app): progress, new books, finished
+books, re-reads, star ratings, and highlights/notes (as private journal
+entries).
 
-## Design decisions (already made)
-1. **Companion daemon, not a reader.** Event-driven (LIPC + inotify, see
-   `docs/roadmap.md` §1), slow poll only as a safety net. Send only on change.
-   Near-real-time is not required; a sync after the user closes the book is fine.
-2. **Data source priority** (see `docs/research/kindle-data-sources.md`):
-   1. Kindle local reading DB (e.g. `cc.db`) — most likely stable across firmware.
-   2. Filesystem / process checks — which book is open.
-   3. LIPC (`lipc-get-prop`) — extra data where available. Never required.
-3. **Position = percent, from the first usable source** (user decision
-   2026-09-28, `internal/syncer/position.go`):
-   1. `cc.db` `p_percentFinished` (confirmed: written on go-Home and sleep);
-   2. `cc.db` `p_lastAccessedPosition` ÷ text length (empty on FW 5.17.1);
-   3. sidecar `.azw3f` `lpr` ÷ text length — **fallback only**, always logged
-      as a cross-check. Also used (user decision 2026-10-01) at a sleep /
-      go-Home when cc.db has no new value and the sidecar is newer and
-      0.1–15 points ahead; never finishes a book.
-   Hardcover page = percent × edition pages. **APNX page maps are dropped**
-   (Calibre APNX on the device is synthetic: fixed 2300 chars per page).
-4. **Capability model.** Backends are optional (`database`, `sidecar`, `lipc`,
-   `inotify`); a missing one must never stop the daemon.
-5. **Auth = Hardcover OAuth Device Authorization Grant.** Kindle shows a code/QR,
-   user approves on phone at hardcover.app/link. No token typing on the Kindle.
-6. **Runtime: one static ARM binary in Go** (`CGO_ENABLED=0`), with its own TLS
-   and bundled CA certs. Do not rely on system curl/Python.
-   Risk: new Go needs a newer Linux kernel than old Kindles have. Pin the Go
-   version after a test binary runs on a real device (see `docs/open-questions.md`).
+User-facing docs: `README.md`. How it works: `docs/architecture.md`.
 
-## Layout
+## Hard constraints
+
+Do not break these without an explicit discussion in an issue.
+
+- **Observe only.** Never replace or modify the Amazon reader, and never
+  write to the Kindle's own data files. The single exception is our own rows
+  in `/var/local/appreg.db` (to register the Endpaper page), with a backup
+  taken first.
+- **No KOReader** or other replacement reader.
+- **Lowest common denominator.** Code must work on older jailbroken Kindles
+  and firmware, not only the newest. No per-model configuration unless
+  there is no other way.
+- **Simple install.** Unzip the release onto the Kindle, tap the library
+  item, sign in with a code. No SSH, no terminal.
+- **Never guess.** If a book cannot be matched to exactly one Hardcover book,
+  skip it. Progress is forward only.
+- **Endpaper never deletes anything on its own.** Only the Uninstall button
+  removes files. (Some Kindles keep `/mnt/us` mounted over USB/MTP, so
+  "folder deleted" heuristics are unsafe.)
+- **Low drain.** Event-driven, no busy polling, minimal flash writes,
+  no network use while offline.
+
+## Design decisions
+
+1. **Companion daemon, not a reader.** Triggers: LIPC events (left book,
+   sleep, Wi-Fi up) and inotify on the Kindle's databases; a 15-minute poll
+   is only a safety net. See `docs/architecture.md`.
+2. **Data sources, in priority order:** the Kindle's `cc.db` → book files and
+   sidecars → LIPC properties. LIPC is never required.
+3. **Position = percent** from the first usable source: `cc.db`
+   `p_percentFinished`, then `p_lastAccessedPosition` ÷ text length, then the
+   `.azw3f` sidecar (fallback only; never finishes a book). Hardcover page =
+   percent × edition pages. APNX page maps are not used.
+4. **Capability model.** Every backend (database, sidecar, LIPC, inotify) is
+   optional; a missing one must never stop the daemon.
+5. **Auth:** Hardcover OAuth Device Authorization Grant (code/QR on the
+   Kindle, approve on a phone). No token typing on the device.
+6. **Runtime:** one static ARM binary in Go (`CGO_ENABLED=0`, `GOARM=6`) with
+   bundled CA roots. Do not depend on system curl, Python or libraries.
+   Builds use Go 1.23 (Linux 2.6.32+); newer Go needs Linux 3.2+, which
+   rules out the oldest Kindles.
+7. **UI:** a Mesquite (Kindle web app) page talking to the daemon over
+   `127.0.0.1` with a random port and key; eips text screens as a fallback.
+8. **State:** our own SQLite database (`modernc.org/sqlite`, WAL, diff
+   writes) in `/var/local/endpaper`; JSON files only as a fallback.
+
+## Repository layout
+
 ```
-cmd/endpaper/        the program: app (library tap), daemon, local page API,
-                     uninstall, dev commands
-cmd/endpaper/ui/     Mesquite page (ES5), embedded in the binary
+cmd/endpaper/        the program: launcher (library tap), daemon, local page
+                     API, uninstall, developer commands
+cmd/endpaper/ui/     the Mesquite page (ES5 HTML/JS, embedded in the binary)
 internal/readers/    cc.db reader
-internal/sidecar/    KRDS sidecar reader (.azw3f lpr/fpr)
+internal/sidecar/    KRDS sidecar reader (.azw3f)
 internal/mobi/       EXTH metadata (ISBN, ASIN) from book files
-internal/book/       book identity (ASIN, title, author, ISBN)
+internal/book/       book identity and title/author rules
 internal/match/      identify waterfall (ASIN → ISBN → library → search)
-internal/syncer/     sync logic: progress, finish, re-read, clips, ratings
-internal/daemon/     change detection + state
-internal/store/      our state DB (SQLite, diff writes)
+internal/syncer/     progress, finish, re-read, ratings, highlights
+internal/daemon/     change detection, retries, state
+internal/store/      the SQLite state store
 internal/hardcover/  OAuth device flow, token refresh, GraphQL client
-internal/metrics/    fmcache.db reader (end-of-book star rating)
-internal/kindledb/   retry for read-only Kindle DB reads during a commit
+internal/metrics/    fmcache.db reader (end-of-book star ratings)
+internal/kindledb/   retry for reads of the Kindle's databases mid-commit
 internal/clippings/  My Clippings.txt parser
-internal/events/     LIPC + inotify watchers
+internal/events/     LIPC and inotify watchers
 internal/appreg/     our rows in the Kindle's appreg.db
-internal/screen/     eips text, pillow alert box
-internal/config/     paths + token storage
-internal/atomicfile/ safe file writes
+internal/screen/     eips text and pillow alert boxes
+internal/config/     paths and token storage
+internal/atomicfile/ crash-safe file writes
 internal/certs/      bundled CA roots
-packaging/kindle/    documents/Endpaper.sh (library item) + cover.png
-scripts/build.sh     release zip
+packaging/kindle/    library item (Endpaper.sh) and its cover image
+scripts/build.sh     builds the release zip
 site/                landing page (GitHub Pages)
-docs/                see docs/README.md
+docs/                architecture, testing, decisions, research
 ```
 
-## Where we left off
-Name (user decision 2026-10-24): **Endpaper** — "a native Kindle →
-hardcover.app sync". Binary, folders and library item are `endpaper`
-(`/mnt/us/endpaper`, `/var/local/endpaper`, `documents/Endpaper.sh`, app id
-`io.github.ipkstef.endpaper`). GitHub repo: `ipkstef/endpaper` (renamed from
-`kindle-hardcover-bridge` 2026-10-24); module path `github.com/ipkstef/endpaper`.
+## Build and test
 
-Core sync is done and **works on device** (e118f27): progress (cc.db,
-sleep sidecar fallback), auto-add, finish, re-read, ratings + result box,
-highlights/notes, offline retry, SQLite state, self-test. History of the
-research and device results: `docs/research/findings-bellatrix-5.17.1.md`,
-`docs/roadmap.md`.
+```sh
+go vet ./...
+go test -race ./...
+gofmt -l cmd internal          # must print nothing
+HC_CLIENT_ID=<client id> ./scripts/build.sh   # → dist/endpaper-<version>.zip
+```
 
-Distribution (user decisions 2026-10-02 … 10-24): **no KUAL, no KPM.** A
-GitHub release zip: `documents/Endpaper.sh` (scriptlet = library item) +
-`endpaper/` folder, copied by USB. The tap runs `endpaper app`: starts the
-daemon (also when signed out) and opens our **Mesquite page** (registered
-in `/var/local/appreg.db`; minor appreg writes are OK, user 2026-10-24).
-The page talks to the daemon over 127.0.0.1 (random port + key in
-`config.js`): sign in with QR, status, sync now, import old highlights,
-check setup, save log, sign out, stop, uninstall. Fallback without
-Mesquite: eips text screens. No autostart at boot (one tap after reboot).
-Uninstall = page button only; Endpaper never deletes anything on its own
-(user decision 2026-10-24, after v0.1.0 uninstalled itself during a USB
-update: the user's Kindle uses MTP, /mnt/us stays mounted). Each tap
-closes an open page first, so a fresh page loads.
-This build is **not yet on device**; checklist in `docs/testing.md`.
+- `cmd/endpaper/ui/app.js` must stay **ES5** (the Kindle's WebKit is old):
+  no arrow functions, `let`/`const`, `fetch` or promises.
+- Real device data for replay tests lives in `internal/*/testdata`.
+- Device testing follows the per-build checklist in `docs/testing.md`.
 
-License MIT. Release: push tag `vX.Y.Z` → `.github/workflows/release.yml`
-(needs repo secret `HC_CLIENT_ID`). The page shows an update banner when
-GitHub has a newer release (checked at most hourly, only while the page is
-open; release builds only). Open: public repo + registered public client
-ID, old-kernel device check. v0.1.0: the user tags it on github.com
-(this session cannot push tags or rename the repo: proxy policy).
-Go version still open (needs an old-kernel device); builds use Go 1.23.
+## Releases
+
+Publishing a GitHub release with a new `vX.Y.Z` tag runs
+`.github/workflows/release.yml`: tests, an ARM build with the public OAuth
+client ID (repository secret `HC_CLIENT_ID`), and the zip attached to the
+release. Record user-facing changes in `CHANGELOG.md`.
+
+## Conventions
+
+- Mark anything not verified on a real device or in real documentation as
+  **UNVERIFIED** (in code comments and docs).
+- Keep changes small and testable; add a unit test for each bug fix.
+- Prefer plain, simple technical English in docs and messages.
+- Time spans that must count real time use the wall clock
+  (`time.Now().Round(0)`): the monotonic clock stops while the Kindle sleeps.
+- Never write progress, ratings or notes to a book unless the match is
+  certain.
 
 ## Docs
-Index: `docs/README.md`.
-- `docs/architecture.md` — parts, triggers, one scan, packages
-- `docs/testing.md` — fixtures, self-test, one checklist per build
-- `docs/roadmap.md` — user goals, decisions and their history
-- `docs/open-questions.md` — what is still unknown
-- `docs/decisions/` — embedded DB, telemetry (draft)
-- `docs/research/` — device findings (FW 5.17.1), Kindle data sources,
-  KindleModding notes, Hardcover API + features, references
-- `CHANGELOG.md` — user-facing changes per release
-- `site/` — landing page (GitHub Pages, `.github/workflows/pages.yml`)
 
-## Working rules for Claude
-- Mark anything not verified on a real device or in real docs as **UNVERIFIED**.
-- Prefer small, testable steps. The user has one Kindle for testing.
-- Keep answers short. Use simple technical English.
-- Push directly to `main` (user decision 2026-10-24). Releases: the user
-  publishes a release with a new `vX.Y.Z` tag on github.com.
+- `docs/README.md` — index
+- `docs/architecture.md` — parts, triggers, one scan, packages
+- `docs/testing.md` — fixtures, self-test, device checklists
+- `docs/roadmap.md` — goals, decisions and their history
+- `docs/open-questions.md` — what is still unknown
+- `docs/decisions/` — design decisions (state store, telemetry draft)
+- `docs/research/` — device findings, Kindle data sources, KindleModding
+  notes, Hardcover API and features, references
+- `CHANGELOG.md` — user-facing changes per release
