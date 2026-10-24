@@ -90,20 +90,20 @@ When a new version is out, the Endpaper page shows an **Update available**
 banner.
 
 1. Download the new zip from the releases page.
-2. Connect USB and unzip it onto the Kindle drive. Replace the old files.
-   **Do not delete the `endpaper` folder first**: deleting it uninstalls
-   (your sign-in is removed).
-3. Eject and tap **Endpaper**. The new version starts.
+2. Connect USB and unzip it onto the Kindle drive (replace the old files,
+   or delete them first: either is fine).
+3. Eject and tap **Endpaper**. The new version starts; you stay signed in.
 
 ## Uninstall
 
-Either:
+Tap **Endpaper** > **Uninstall**. It removes the app, its settings and
+your sign-in from the Kindle.
 
-- tap **Endpaper** > **Uninstall**, or
-- delete `documents/Endpaper.sh` and the `endpaper` folder over USB. If
-  sync is running, it removes its remaining files (sign-in and state) the
-  next time it wakes up. If you restarted the Kindle and did not tap
-  Endpaper since then, tap it once before you delete the folder.
+Endpaper never deletes anything on its own. If you only delete
+`documents/Endpaper.sh` and the `endpaper` folder over USB, sync stops at
+the next restart, but your sign-in and settings stay in
+`/var/local/endpaper` (a few KB). To remove them too, install again and
+use **Uninstall**.
 
 ## Privacy
 

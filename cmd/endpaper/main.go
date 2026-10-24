@@ -94,7 +94,7 @@ func main() {
 	_ = fs.Parse(os.Args[2:])
 
 	// Before the log: the log lives in the state folder being moved.
-	notes := migrateLegacy(*state, usbMounted)
+	notes := migrateLegacy(*state)
 	setupLog(*logPath)
 	for _, n := range notes {
 		log.Printf("migrate from hcbridge: %s", n)

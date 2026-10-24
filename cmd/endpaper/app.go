@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ipkstef/endpaper/internal/appreg"
@@ -131,6 +133,12 @@ func (a *app) openPage(ctx context.Context) error {
 	if changed {
 		log.Printf("launch: registered %s in appreg.db", appID)
 	}
+	// Close a page that is still open (also an older version's): "start"
+	// would only bring it back with its old code and connection. A fresh
+	// page reads the current config.js.
+	if n := closePage("/proc"); n > 0 {
+		log.Printf("launch: closed %d open page process(es)", n)
+	}
 	c, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	if out, err := exec.CommandContext(c, "lipc-set-prop", "com.lab126.appmgrd", "start", "app://"+appID).CombinedOutput(); err != nil {
@@ -140,4 +148,53 @@ func (a *app) openPage(ctx context.Context) error {
 	time.Sleep(3 * time.Second)
 	log.Printf("launch: page started, active window %q", lipcGet(ctx, "com.lab126.winmgr", "getActiveAppTitle"))
 	return nil
+}
+
+// pagePids returns the processes that run our page: Mesquite started with
+// "-l <appID>" (the command we register in appreg.db).
+func pagePids(proc string) []int {
+	dirs, _ := os.ReadDir(proc)
+	var pids []int
+	for _, d := range dirs {
+		pid, err := strconv.Atoi(d.Name())
+		if err != nil || pid == os.Getpid() {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join(proc, d.Name(), "cmdline"))
+		if err != nil {
+			continue
+		}
+		args := strings.Split(strings.TrimRight(string(b), "\x00"), "\x00")
+		for i := 0; i+1 < len(args); i++ {
+			if args[i] == "-l" && args[i+1] == appID && strings.HasSuffix(args[0], "mesquite") {
+				pids = append(pids, pid)
+				break
+			}
+		}
+	}
+	return pids
+}
+
+// closePage stops open page processes (TERM, then KILL after 3 s) and
+// returns how many it found.
+func closePage(proc string) int {
+	pids := pagePids(proc)
+	n := len(pids)
+	for _, p := range pids {
+		_ = syscall.Kill(p, syscall.SIGTERM)
+	}
+	for i := 0; i < 15 && len(pids) > 0; i++ {
+		time.Sleep(200 * time.Millisecond)
+		alive := pids[:0]
+		for _, p := range pids {
+			if syscall.Kill(p, 0) == nil {
+				alive = append(alive, p)
+			}
+		}
+		pids = alive
+	}
+	for _, p := range pids {
+		_ = syscall.Kill(p, syscall.SIGKILL)
+	}
+	return n
 }

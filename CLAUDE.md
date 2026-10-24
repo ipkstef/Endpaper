@@ -95,8 +95,10 @@ The page talks to the daemon over 127.0.0.1 (random port + key in
 `config.js`): sign in with QR, status, sync now, import old highlights,
 check setup, save log, sign out, stop, uninstall. Fallback without
 Mesquite: eips text screens. No autostart at boot (one tap after reboot).
-Uninstall = page button, or delete the folder: the daemon sees it gone
-(only while /mnt/us is mounted, never in USB mode) and removes the rest.
+Uninstall = page button only; Endpaper never deletes anything on its own
+(user decision 2026-10-24, after v0.1.0 uninstalled itself during a USB
+update: the user's Kindle uses MTP, /mnt/us stays mounted). Each tap
+closes an open page first, so a fresh page loads.
 This build is **not yet on device**; checklist in `docs/testing.md`.
 
 License MIT. Release: push tag `vX.Y.Z` → `.github/workflows/release.yml`

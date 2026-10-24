@@ -4,8 +4,8 @@
 # DontUseFBInk
 #
 # Tap "Endpaper" in the library: starts background sync and opens the
-# Endpaper page (sign in, status, settings). Uninstall: use the page's
-# Uninstall button, or delete this file and the "endpaper" folder.
+# Endpaper page (sign in, status, settings). Uninstall: the page's
+# Uninstall button (Endpaper never deletes anything on its own).
 HOME_DIR=/mnt/us/endpaper
 BIN=/tmp/endpaper
 

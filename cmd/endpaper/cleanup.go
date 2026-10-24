@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"log"
 	"os"
@@ -19,58 +18,21 @@ const (
 	scriptlet = "/mnt/us/documents/Endpaper.sh"
 )
 
-// usbMounted reports if the USB drive (/mnt/us) is mounted and readable.
-// In USB mode the Kindle unmounts it, so every file there looks deleted.
-func usbMounted() bool {
-	f, err := os.Open("/proc/mounts")
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-	found := false
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		if fs := strings.Fields(sc.Text()); len(fs) > 1 && fs[1] == usbRoot {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return false
-	}
-	_, err = os.Stat(filepath.Join(usbRoot, "documents"))
-	return err == nil
-}
-
-// installGone reports if the user deleted the install folder. It is never
-// true while the drive is unmounted (USB mode), or when home is not set
-// (development runs).
-func installGone(home string, mounted func() bool) bool {
-	if home == "" || !mounted() {
-		return false
-	}
-	_, err := os.Stat(home)
-	// Look at the mount again: an unmount between the two checks (USB
-	// mode starting) makes the folder look deleted.
-	return os.IsNotExist(err) && mounted()
-}
-
-// uninstall removes everything we put on the Kindle, then exits:
-// our appreg rows, the page, the state (token, DB, log), the scriptlet,
-// the install folder (when removeHome) and the running binary in /tmp
-// (Linux lets a running program delete its own file).
-func (a *app) uninstall(removeHome bool) {
-	log.Printf("uninstall: removing endpaper (folder removed by user: %v)", !removeHome)
+// uninstall removes everything we put on the Kindle, then exits: our
+// appreg rows, the page, the state (token, DB, log), the scriptlet, the
+// install folder and the running binary in /tmp (Linux lets a running
+// program delete its own file). Only the page's Uninstall button calls it:
+// Endpaper never deletes anything on its own (user decision 2026-10-24).
+func (a *app) uninstall() {
+	log.Printf("uninstall: removing endpaper")
 	if err := appreg.Unregister(appreg.DefaultPath, appID); err != nil {
 		log.Printf("uninstall: appreg: %v", err)
 	}
 	_ = os.RemoveAll(uiDir)
-	if usbMounted() {
-		_ = os.Remove(scriptlet)
-		_ = os.RemoveAll(scriptlet + ".sdr")
-		if removeHome && a.home != "" {
-			_ = os.RemoveAll(a.home)
-		}
+	_ = os.Remove(scriptlet)
+	_ = os.RemoveAll(scriptlet + ".sdr")
+	if a.home != "" {
+		_ = os.RemoveAll(a.home)
 	}
 	if a.sdb != nil {
 		a.sdb.Close()
@@ -87,7 +49,7 @@ func (a *app) uninstall(removeHome bool) {
 // first scriptlet build). Variables, so tests can point them elsewhere.
 var legacy = struct {
 	stateDir, uiDir, appID string
-	usbPaths               []string // removed when /mnt/us is mounted
+	usbPaths               []string // old files on the USB drive
 }{
 	stateDir: "/var/local/hcbridge",
 	uiDir:    "/var/local/mesquite/hcbridge",
@@ -114,7 +76,7 @@ var legacyNames = map[string]string{
 // and removes the old page, appreg rows and old files on the USB drive.
 // It runs before the log is set up (the log lives in stateDir), so it
 // returns its notes for the log.
-func migrateLegacy(stateDir string, mounted func() bool) (notes []string) {
+func migrateLegacy(stateDir string) (notes []string) {
 	if _, err := os.Stat(legacy.stateDir); err != nil {
 		return nil
 	}
@@ -158,11 +120,9 @@ func migrateLegacy(stateDir string, mounted func() bool) (notes []string) {
 		notes = append(notes, "old appreg rows removed (if any)")
 	}
 	_ = os.RemoveAll(legacy.uiDir)
-	if mounted() {
-		for _, p := range legacy.usbPaths {
-			if _, err := os.Stat(p); err == nil && os.RemoveAll(p) == nil {
-				notes = append(notes, "removed "+p)
-			}
+	for _, p := range legacy.usbPaths {
+		if _, err := os.Stat(p); err == nil && os.RemoveAll(p) == nil {
+			notes = append(notes, "removed "+p)
 		}
 	}
 	return notes

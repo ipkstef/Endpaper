@@ -24,6 +24,10 @@ Goal: few device rounds. The user has one Kindle.
   steps and the log lines that mean pass.
 
 ## Checklist: Endpaper scriptlet + Mesquite page build (2026-10-24)
+Device 2026-10-24 (v0.1.0 → v0.1.1 update): deleting the old folder over
+USB made v0.1.0 uninstall itself (this Kindle uses MTP: `/mnt/us` stays
+mounted). Fixed in v0.1.2: no "folder deleted" uninstall at all.
+
 Result v0.1.0 (device log 2026-10-24 07:36): steps 0, 1, 2, 3, 5, 6, 8
 **pass** (migration moved 9 files and kept the state; page opened as
 window `L:A_N:application_PC:TS_ID:io.github.ipkstef.endpaper`; page
@@ -68,16 +72,15 @@ the new `endpaper` folder. Eject.
    last result shows the book.
 8. **Save log for support:** connect USB; `endpaper/endpaper-log.txt`
    exists.
-9. **USB mode is safe:** while USB is connected, the folder looks gone.
-   After eject, tap Endpaper: still signed in (no `uninstall:` line).
+9. **Update over USB is safe:** with USB, delete `documents/Endpaper.sh`
+   and the `endpaper` folder, copy them again, eject, tap Endpaper.
+   Pass: still signed in; no `uninstall:` line in the log.
 10. **Stop sync:** tap Stop (confirm). Home, tap Endpaper again: sync
     starts again (`daemon: started`).
-11. **Uninstall by folder delete:** with USB, delete `documents/Endpaper.sh`
-    and the `endpaper` folder. Eject. Open and close a book (wakes the
-    daemon): log `install folder … is gone; uninstall if still gone in 1m0s`.
-    Wait more than 1 min, open and close a book again → uninstall. Check:
-    reinstall the zip, tap Endpaper → the page asks you to **sign in**
-    again (state was removed).
+11. **Fresh page:** with the page open, press Home, then tap Endpaper.
+    Pass: log `launch: closed 1 open page process(es)`, the page loads
+    again with the current version. UNVERIFIED: how the Kindle reacts to
+    the closed page.
 12. **Uninstall button:** tap Uninstall (confirm). Pass: page says removed;
     after Home, the "Endpaper" item is gone from the library (may need a
     library refresh); USB shows no `endpaper` folder.

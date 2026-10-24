@@ -89,10 +89,13 @@ daemon stops trying until Wi-Fi is back; changes wait in the state DB.
 
 - **Install:** unzip the release onto the drive, tap Endpaper, sign in on
   the page (device code + QR).
-- **Update:** unzip over the old files, tap Endpaper: a daemon of another
-  version is replaced. The page shows a banner when GitHub has a newer
-  release (checked at most daily, only while the page is open).
-- **Uninstall:** the page button, or delete the `endpaper` folder: the
-  daemon notices (only while `/mnt/us` is mounted, never in USB mode) and
-  removes its state, page and appreg rows, then exits.
+- **Update:** copy the new files (over the old ones or after deleting
+  them), tap Endpaper: a daemon of another version is replaced, and an
+  open page is closed so a fresh one loads. The page shows a banner when
+  GitHub has a newer release (checked at most daily, only while the page
+  is open).
+- **Uninstall:** only the page button. Endpaper never deletes anything on
+  its own: on MTP Kindles `/mnt/us` stays mounted during USB, so a
+  "folder deleted" rule uninstalled during a normal update (v0.1.0/v0.1.1,
+  device 2026-10-24).
 - No autostart at boot (needs a rootfs write): one tap after a reboot.

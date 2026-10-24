@@ -40,9 +40,6 @@ const (
 	alertWait = 3 * time.Second
 	// stopGrace: a stopping daemon exits after this at the latest.
 	stopGrace = 15 * time.Second
-	// goneConfirm: the install folder must be gone this long before the
-	// daemon uninstalls.
-	goneConfirm = time.Minute
 )
 
 func (a *app) pidPath() string   { return filepath.Join(a.stateDir, "daemon.pid") }
@@ -274,22 +271,7 @@ func (a *app) daemon(ctx context.Context) error {
 	// days of mostly-asleep use (device log 2026-10-01).
 	counts, countsAt := map[string]int{}, time.Now().Round(0)
 	signedOut := false // logged once per sign-out
-	var goneSince time.Time
 	scan := func(why string) {
-		// The user deleted the install folder: remove the rest and exit.
-		// Only when it is gone at two checks at least goneConfirm apart
-		// (wall clock): never on one look during the switch to USB mode.
-		if installGone(a.home, usbMounted) {
-			now := time.Now().Round(0)
-			if goneSince.IsZero() {
-				goneSince = now
-				log.Printf("daemon: install folder %s is gone; uninstall if still gone in %v", a.home, goneConfirm)
-			} else if now.Sub(goneSince) >= goneConfirm {
-				a.uninstall(false)
-			}
-		} else {
-			goneSince = time.Time{}
-		}
 		if _, err := a.store.Load(); err != nil {
 			if !signedOut {
 				log.Printf("daemon: not signed in, waiting (%v)", err)
@@ -331,7 +313,7 @@ func (a *app) daemon(ctx context.Context) error {
 			log.Printf("daemon: stopped")
 			return nil
 		case <-uninstallReq:
-			a.uninstall(true)
+			a.uninstall()
 		case why = <-trig:
 		case <-poll.C:
 			if readerOpen(ctx) {
