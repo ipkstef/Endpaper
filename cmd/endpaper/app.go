@@ -100,13 +100,14 @@ func (a *app) ensureDaemon() error {
 	if err := a.startDaemon(); err != nil {
 		return err
 	}
-	for i := 0; i < 40; i++ {
+	// The new daemon may wait for an old one to stop (up to ~25 s).
+	for i := 0; i < 120; i++ {
 		time.Sleep(250 * time.Millisecond)
 		if p, v := uiDaemon(); p != 0 && p == a.running() && v == version {
 			return nil
 		}
 	}
-	return errors.New("daemon did not start in 10 s")
+	return errors.New("daemon did not start in 30 s")
 }
 
 func (a *app) openPage(ctx context.Context) error {
@@ -116,8 +117,8 @@ func (a *app) openPage(ctx context.Context) error {
 	if _, err := exec.LookPath("lipc-set-prop"); err != nil {
 		return err
 	}
-	if p, _ := uiDaemon(); p == 0 {
-		return errors.New("page not installed")
+	if p, _ := uiDaemon(); p == 0 || p != a.running() {
+		return errors.New("background sync is not running")
 	}
 	changed, err := appreg.Register(appreg.DefaultPath, appID, map[string]string{
 		"command":              mesquite + " -l " + appID + " -c file://" + uiDir + "/",

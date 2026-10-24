@@ -27,6 +27,12 @@ func TestResolvePercentOrder(t *testing.T) {
 	if src != SrcSidecar || p < 7.29 || p > 7.30 {
 		t.Fatalf("got %v %q", p, src)
 	}
+	// A position past the end (text length of another format part) is not
+	// 100 %: it is ignored.
+	p, src, _ = ResolvePercent(&book.Local{LastPosition: "#2000000"}, meta, nil)
+	if src != "" || p != 0 {
+		t.Fatalf("past the end: got %v %q", p, src)
+	}
 	// No text length (e.g. KFX): positions cannot give a percent.
 	p, src, _ = ResolvePercent(&book.Local{}, nil, sc)
 	if src != "" || p != 0 {

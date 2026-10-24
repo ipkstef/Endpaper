@@ -53,6 +53,10 @@ func TestRegister(t *testing.T) {
 	if _, err := os.Stat(bak); err != nil {
 		t.Fatal("no backup")
 	}
+	// The backup is a real database with the state before our write.
+	if n := count(t, bak, `SELECT count(*) FROM handlerIds`); n != 1 {
+		t.Fatalf("backup has %d handlers, want 1 (before our row)", n)
+	}
 	// Same again: no write, no duplicate rows.
 	if changed, err = Register(p, "a.b", props, bak); err != nil || changed {
 		t.Fatal(changed, err)

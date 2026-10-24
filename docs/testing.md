@@ -74,9 +74,10 @@ the new `endpaper` folder. Eject.
     starts again (`daemon: started`).
 11. **Uninstall by folder delete:** with USB, delete `documents/Endpaper.sh`
     and the `endpaper` folder. Eject. Open and close a book (wakes the
-    daemon). Pass: log gone; with SSH/next install: `/var/local/endpaper`
-    and `/var/local/mesquite/endpaper` gone. Easy check: reinstall the zip,
-    tap Endpaper → page asks you to **sign in** again (state was removed).
+    daemon): log `install folder … is gone; uninstall if still gone in 1m0s`.
+    Wait more than 1 min, open and close a book again → uninstall. Check:
+    reinstall the zip, tap Endpaper → the page asks you to **sign in**
+    again (state was removed).
 12. **Uninstall button:** tap Uninstall (confirm). Pass: page says removed;
     after Home, the "Endpaper" item is gone from the library (may need a
     library refresh); USB shows no `endpaper` folder.

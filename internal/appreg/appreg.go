@@ -11,7 +11,6 @@ package appreg
 import (
 	"database/sql"
 	"fmt"
-	"io"
 	"os"
 
 	_ "modernc.org/sqlite"
@@ -57,7 +56,7 @@ func Register(path, id string, props map[string]string, backup string) (changed 
 	}
 	if backup != "" {
 		if _, err := os.Stat(backup); os.IsNotExist(err) {
-			if err := copyFile(path, backup); err != nil {
+			if err := snapshot(db, backup); err != nil {
 				return false, fmt.Errorf("appreg: backup: %w", err)
 			}
 		}
@@ -125,20 +124,22 @@ func open(path string) (*sql.DB, error) {
 	return db, nil
 }
 
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.OpenFile(dst, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
-	if err != nil {
-		return err
-	}
-	if _, err := io.Copy(out, in); err != nil {
-		out.Close()
+// snapshot writes a consistent copy of the open database to dst
+// (VACUUM INTO reads in one transaction, so a write by appmgrd at the same
+// time cannot tear it) and flushes it to disk before we change anything.
+func snapshot(db *sql.DB, dst string) error {
+	if _, err := db.Exec(`VACUUM INTO ?`, dst); err != nil {
 		os.Remove(dst)
 		return err
 	}
-	return out.Close()
+	f, err := os.OpenFile(dst, os.O_RDWR, 0)
+	if err != nil {
+		return err
+	}
+	_ = os.Chmod(dst, 0o600)
+	if err := f.Sync(); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }

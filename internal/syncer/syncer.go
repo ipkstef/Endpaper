@@ -269,11 +269,11 @@ func (s *Syncer) Sync(ctx context.Context, local *book.Local) (Outcome, error) {
 	if local.SidecarOnly {
 		src = SrcSidecar // the daemon put the sidecar percent in local.Percent
 	}
-	// Finish only from the Kindle's own values: a sidecar position divided by
-	// a text length of another format part can give 100 % by mistake
-	// (review 2026-09-28).
+	// Finish only from the Kindle's own percent: a position divided by a
+	// text length of another format part can give 100 % by mistake
+	// (reviews 2026-09-28, 2026-10-24). Read state 2 still finishes.
 	finPct := pct
-	if src == SrcSidecar {
+	if src == SrcSidecar || src == SrcCCPosition {
 		finPct = 0
 	}
 	finished := IsFinished(finPct, local.ReadState)

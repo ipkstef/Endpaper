@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ipkstef/endpaper/internal/atomicfile"
 	"github.com/ipkstef/endpaper/internal/daemon"
 	"github.com/ipkstef/endpaper/internal/events"
 	"github.com/ipkstef/endpaper/internal/metrics"
@@ -37,6 +38,11 @@ const (
 	alertHideMs = 8000
 	// alertWait: longest wait for the Goodreads error box before ours.
 	alertWait = 3 * time.Second
+	// stopGrace: a stopping daemon exits after this at the latest.
+	stopGrace = 15 * time.Second
+	// goneConfirm: the install folder must be gone this long before the
+	// daemon uninstalls.
+	goneConfirm = time.Minute
 )
 
 func (a *app) pidPath() string   { return filepath.Join(a.stateDir, "daemon.pid") }
@@ -72,10 +78,19 @@ func (a *app) daemon(ctx context.Context) error {
 		if old != 0 {
 			_ = syscall.Kill(old, syscall.SIGTERM)
 		}
+		// Wait longer than its own safety exit (stopGrace), then kill it.
 		locked := false
-		for i := 0; i < 40 && !locked; i++ {
+		for i := 0; i < 80 && !locked; i++ {
 			time.Sleep(250 * time.Millisecond)
 			locked = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) == nil
+		}
+		if !locked && old != 0 {
+			log.Printf("daemon: old daemon (pid %d) did not stop, killing it", old)
+			_ = syscall.Kill(old, syscall.SIGKILL)
+			for i := 0; i < 20 && !locked; i++ {
+				time.Sleep(250 * time.Millisecond)
+				locked = syscall.Flock(int(lock.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) == nil
+			}
 		}
 		if !locked {
 			return fmt.Errorf("old daemon (pid %d) did not stop", old)
@@ -95,8 +110,8 @@ func (a *app) daemon(ctx context.Context) error {
 		cancel()
 		// Safety net: a stuck call must never keep a stopped daemon alive
 		// (then "Start" cannot replace it).
-		time.Sleep(15 * time.Second)
-		log.Printf("daemon: did not stop in 15 s, exiting")
+		time.Sleep(stopGrace)
+		log.Printf("daemon: did not stop in %v, exiting", stopGrace)
 		os.Exit(1)
 	}()
 
@@ -108,10 +123,27 @@ func (a *app) daemon(ctx context.Context) error {
 		}
 	}
 
+	// Create the shared objects now, before any goroutine (page API, LIPC
+	// callbacks) can use them: they are made lazily and without a lock.
+	a.client()
+	a.syncer()
+	a.stateDB()
+
+	// Uninstall from the page runs here, between scans (never during a
+	// write).
+	uninstallReq := make(chan struct{}, 1)
 	var caps []string
 	importAll := new(atomic.Bool)
-	srv := &api{a: a, key: newKey(), fire: fire, stop: cancel, importAll: importAll,
-		upd: &updates{http: a.oauth.HTTP}}
+	srv := &api{a: a, key: newKey(), fire: fire, importAll: importAll,
+		upd: &updates{http: a.oauth.HTTP},
+		// Stop: the same path as SIGTERM, with its safety exit.
+		stop: func() { _ = syscall.Kill(os.Getpid(), syscall.SIGTERM) },
+		uninstall: func() {
+			select {
+			case uninstallReq <- struct{}{}:
+			default:
+			}
+		}}
 	if port, err := srv.serve(ctx); err != nil {
 		caps = append(caps, "page api: "+err.Error())
 	} else if err := installUI(port, srv.key); err != nil {
@@ -160,6 +192,9 @@ func (a *app) daemon(ctx context.Context) error {
 		caps = append(caps, "inotify: ok")
 	}
 	log.Printf("daemon: started, version %s, pid %d (%s)", version, os.Getpid(), strings.Join(caps, ", "))
+	if n := atomicfile.CleanTemp(a.stateDir); n > 0 {
+		log.Printf("daemon: removed %d temp files left by a power loss", n)
+	}
 	var fs syscall.Statfs_t
 	if syscall.Statfs(a.stateDir, &fs) == nil {
 		log.Printf("daemon: %s: %d MB free of %d MB", a.stateDir,
@@ -239,10 +274,21 @@ func (a *app) daemon(ctx context.Context) error {
 	// days of mostly-asleep use (device log 2026-10-01).
 	counts, countsAt := map[string]int{}, time.Now().Round(0)
 	signedOut := false // logged once per sign-out
+	var goneSince time.Time
 	scan := func(why string) {
 		// The user deleted the install folder: remove the rest and exit.
+		// Only when it is gone at two checks at least goneConfirm apart
+		// (wall clock): never on one look during the switch to USB mode.
 		if installGone(a.home, usbMounted) {
-			a.uninstall(false)
+			now := time.Now().Round(0)
+			if goneSince.IsZero() {
+				goneSince = now
+				log.Printf("daemon: install folder %s is gone; uninstall if still gone in %v", a.home, goneConfirm)
+			} else if now.Sub(goneSince) >= goneConfirm {
+				a.uninstall(false)
+			}
+		} else {
+			goneSince = time.Time{}
 		}
 		if _, err := a.store.Load(); err != nil {
 			if !signedOut {
@@ -284,6 +330,8 @@ func (a *app) daemon(ctx context.Context) error {
 		case <-ctx.Done():
 			log.Printf("daemon: stopped")
 			return nil
+		case <-uninstallReq:
+			a.uninstall(true)
 		case why = <-trig:
 		case <-poll.C:
 			if readerOpen(ctx) {

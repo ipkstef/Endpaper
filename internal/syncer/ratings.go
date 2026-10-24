@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/ipkstef/endpaper/internal/atomicfile"
 	"github.com/ipkstef/endpaper/internal/book"
@@ -54,11 +55,12 @@ type RateSync struct {
 
 	DB *store.Store // optional state database (else StatePath JSON)
 
-	pend  *store.Table[metrics.Rating]
-	mu    sync.Mutex // guards st, told
-	st    *RateState
-	told  map[string]RateResult // last result reported per tap
-	runMu sync.Mutex            // one Run at a time
+	pend    *store.Table[metrics.Rating]
+	mu      sync.Mutex // guards st, told, unsaved
+	st      *RateState
+	unsaved bool                  // the last save of collected taps failed
+	told    map[string]RateResult // last result reported per tap
+	runMu   sync.Mutex            // one Run at a time
 }
 
 // RateResult is the outcome of one star tap.
@@ -92,7 +94,11 @@ var quietSchemas = map[string]bool{
 func (r *RateSync) Collect(ctx context.Context) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.collect(ctx, r.state())
+	st, err := r.state()
+	if err != nil {
+		return 0, err
+	}
+	return r.collect(ctx, st)
 }
 
 // Run collects new taps, then sends pending ones. Only the daemon's scan
@@ -102,7 +108,11 @@ func (r *RateSync) Run(ctx context.Context) (sent int, err error) {
 	r.runMu.Lock()
 	defer r.runMu.Unlock()
 	r.mu.Lock()
-	st := r.state()
+	st, err := r.state()
+	if err != nil {
+		r.mu.Unlock()
+		return 0, err
+	}
 	_, err = r.collect(ctx, st)
 	if !r.SyncShelves {
 		clear(st.Shelves) // choices saved by an older version
@@ -162,11 +172,15 @@ func (r *RateSync) Run(ctx context.Context) (sent int, err error) {
 }
 
 // state returns the state, loaded once. The caller holds r.mu.
-func (r *RateSync) state() *RateState {
+func (r *RateSync) state() (*RateState, error) {
 	if r.st == nil {
-		r.st = r.load()
+		st, err := r.load()
+		if err != nil {
+			return nil, err // try again at the next call
+		}
+		r.st = st
 	}
-	return r.st
+	return r.st, nil
 }
 
 func (r *RateSync) collect(ctx context.Context, st *RateState) (n int, err error) {
@@ -210,10 +224,15 @@ func (r *RateSync) collect(ctx context.Context, st *RateState) (n int, err error
 			}
 		}
 		n += len(rs)
-		if len(rs) > 0 || len(other) > 0 {
+		// Save new taps at once: the Kindle empties fmcache soon, so a tap
+		// only in memory is lost at a crash. A failed save is tried again
+		// at the next call.
+		if len(rs) > 0 || len(other) > 0 || r.unsaved {
 			if err := r.save(st); err != nil {
+				r.unsaved = true
 				return n, err
 			}
+			r.unsaved = false
 		}
 	}
 	return n, nil
@@ -361,11 +380,11 @@ type rateCursors struct {
 	OtherMS int64 `json:"other_ms"`
 }
 
-func (r *RateSync) load() *RateState {
+func (r *RateSync) load() (*RateState, error) {
 	st := &RateState{}
 	if r.DB != nil {
 		r.pend = store.NewTable[metrics.Rating](r.DB, store.TRatings)
-		_ = r.DB.ImportJSON("ratings.json", r.StatePath, func(b []byte) error {
+		err := r.DB.ImportJSON("ratings.json", r.StatePath, func(b []byte) error {
 			var old RateState
 			if json.Unmarshal(b, &old) != nil {
 				return nil
@@ -373,14 +392,36 @@ func (r *RateSync) load() *RateState {
 			if err := r.pend.Save(old.Pending); err != nil {
 				return err
 			}
-			return r.DB.SetJSON(kvRatings, rateCursors{old.LastMS, old.OtherMS})
+			var c rateCursors // merge: cursors only move forward
+			if _, err := r.DB.LookupJSON(kvRatings, &c); err != nil {
+				return err
+			}
+			return r.DB.SetJSON(kvRatings, rateCursors{max(c.LastMS, old.LastMS), max(c.OtherMS, old.OtherMS)})
 		})
+		if err != nil {
+			return nil, err
+		}
+		// Read errors stop here: a reset cursor or an empty pending list
+		// would lose star taps.
 		var c rateCursors
-		r.DB.GetJSON(kvRatings, &c)
+		if _, err := r.DB.LookupJSON(kvRatings, &c); err != nil {
+			return nil, err
+		}
 		st.LastMS, st.OtherMS = c.LastMS, c.OtherMS
-		st.Pending, _ = r.pend.Load()
+		if st.Pending, err = r.pend.Load(); err != nil {
+			return nil, err
+		}
 	} else if b, err := os.ReadFile(r.StatePath); err == nil {
 		_ = json.Unmarshal(b, st)
+	}
+	// A cursor in the future (the clock was wrong once, e.g. after the
+	// battery ran out) would skip every new tap: move it to now - 1 h. A
+	// tap read twice only sends the same stars again.
+	now := time.Now().UnixMilli()
+	for _, c := range []*int64{&st.LastMS, &st.OtherMS} {
+		if *c > now {
+			*c = now - time.Hour.Milliseconds()
+		}
 	}
 	if st.Pending == nil {
 		st.Pending = map[string]metrics.Rating{}
@@ -388,7 +429,7 @@ func (r *RateSync) load() *RateState {
 	if st.Shelves == nil {
 		st.Shelves = map[string]int{}
 	}
-	return st
+	return st, nil
 }
 
 // save writes the state; with the DB, the changed taps and the cursors in

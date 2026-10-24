@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -35,8 +36,15 @@ func LIPC(ctx context.Context, publisher string, onLine func(string), logf func(
 			}
 			if err == nil {
 				sc := bufio.NewScanner(out)
+				sc.Buffer(make([]byte, 4096), 1<<20)
 				for sc.Scan() {
 					onLine(sc.Text())
+				}
+				if serr := sc.Err(); serr != nil {
+					// Nobody reads the pipe any more: stop the child, or
+					// Wait blocks for good once the pipe is full.
+					_ = cmd.Process.Kill()
+					logf("events: lipc %s: %v", publisher, serr)
 				}
 				err = cmd.Wait()
 			}
@@ -74,17 +82,14 @@ const (
 // channel is closed when the watch ends: ctx done, or the folder is gone or
 // unmounted (e.g. /mnt/us in USB mode); the caller may then watch again.
 func WatchDir(ctx context.Context, dir string, onEvent func(name string, mask uint32)) (<-chan struct{}, error) {
-	// CLOEXEC: child processes (lipc-wait-event, lipc-get-prop) must not
-	// inherit the watch.
-	fd, err := syscall.InotifyInit1(syscall.IN_CLOEXEC)
+	fd, err := initWatch(dir)
 	if err != nil {
 		return nil, err
 	}
-	mask := uint32(InModify | InCloseWrite | InCreate | InDelete | InMovedTo)
-	if _, err := syscall.InotifyAddWatch(fd, dir, mask); err != nil {
-		syscall.Close(fd)
-		return nil, err
-	}
+	// Non-blocking fd in an *os.File: reads go through Go's poller, so
+	// Close wakes a waiting Read (a raw blocking read(2) would not wake,
+	// and would later read from a reused fd number).
+	f := os.NewFile(uintptr(fd), "inotify:"+dir)
 	done := make(chan struct{})
 	stop := make(chan struct{})
 	go func() {
@@ -92,14 +97,14 @@ func WatchDir(ctx context.Context, dir string, onEvent func(name string, mask ui
 		case <-ctx.Done():
 		case <-stop:
 		}
-		syscall.Close(fd)
+		f.Close()
 	}()
 	go func() {
 		defer close(done)
 		defer close(stop)
 		buf := make([]byte, 64*1024)
 		for {
-			n, err := syscall.Read(fd, buf)
+			n, err := f.Read(buf)
 			if err != nil {
 				if errors.Is(err, syscall.EINTR) {
 					continue
@@ -125,4 +130,30 @@ func WatchDir(ctx context.Context, dir string, onEvent func(name string, mask ui
 		}
 	}()
 	return done, nil
+}
+
+const watchMask = uint32(InModify | InCloseWrite | InCreate | InDelete | InMovedTo)
+
+// initWatch makes a non-blocking inotify fd watching dir. CLOEXEC: child
+// processes (lipc-wait-event, lipc-get-prop) must not inherit it.
+func initWatch(dir string) (int, error) {
+	fd, err := syscall.InotifyInit1(syscall.IN_CLOEXEC | syscall.IN_NONBLOCK)
+	if err != nil {
+		return -1, err
+	}
+	if _, err := syscall.InotifyAddWatch(fd, dir, watchMask); err != nil {
+		syscall.Close(fd)
+		return -1, err
+	}
+	return fd, nil
+}
+
+// CanWatch reports if dir can be watched (for the self-test): it adds a
+// watch and closes it at once, with no reader left behind.
+func CanWatch(dir string) error {
+	fd, err := initWatch(dir)
+	if err != nil {
+		return err
+	}
+	return syscall.Close(fd)
 }

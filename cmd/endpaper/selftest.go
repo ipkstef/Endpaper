@@ -83,9 +83,7 @@ func (a *app) checks(ctx context.Context) (lines, screenLines []string) {
 		_, err := exec.LookPath(t)
 		res(err == nil, t, map[bool]string{true: "found", false: "missing"}[err == nil])
 	}
-	wctx, cancel := context.WithCancel(ctx)
-	_, err = events.WatchDir(wctx, filepath.Dir(a.db.Path), func(string, uint32) {})
-	cancel()
+	err = events.CanWatch(filepath.Dir(a.db.Path))
 	res(err == nil, "inotify", errText(err, "ok"))
 
 	// Space.

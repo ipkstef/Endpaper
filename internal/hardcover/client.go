@@ -33,6 +33,10 @@ type Client struct {
 	Endpoint string
 	// Token returns a valid access token (it may refresh it first).
 	Token func(context.Context) (string, error)
+	// Refresh, if set, gets a new access token now. Do calls it once when
+	// the server refuses the token although the local clock says it is
+	// valid (clock behind, token revoked early).
+	Refresh func(context.Context) error
 	// Sleep is replaced in tests.
 	Sleep func(context.Context, time.Duration) error
 	// Calls counts requests sent (for logs and tests).
@@ -118,7 +122,21 @@ var retryInRe = regexp.MustCompile(`(?i)try again in (\d+) second`)
 
 // GraphQLError is one error from a GraphQL response.
 type GraphQLError struct {
-	Message string `json:"message"`
+	Message    string `json:"message"`
+	Extensions struct {
+		Code string `json:"code"`
+	} `json:"extensions"`
+}
+
+// authFailed reports a GraphQL error that means the token was refused
+// (Hasura: code "invalid-jwt", messages "Could not verify JWT: JWTExpired"
+// and the like).
+func (e GraphQLError) authFailed() bool {
+	return e.Extensions.Code == "invalid-jwt" ||
+		strings.Contains(e.Message, "invalid-jwt") ||
+		strings.Contains(e.Message, "Unable to verify token") ||
+		strings.Contains(e.Message, "Could not verify JWT") ||
+		strings.Contains(e.Message, "JWTExpired")
 }
 
 // Errors is a list of GraphQL errors.
@@ -180,11 +198,20 @@ func (c *Client) Do(ctx context.Context, query string, vars map[string]any, out 
 	if c.Offline() {
 		return ErrOffline
 	}
+	refreshed := false
 	for i := 0; ; i++ {
 		if err := c.wait(ctx); err != nil {
 			return err
 		}
 		err := c.do(ctx, query, vars, out)
+		if errors.Is(err, ErrUnauthorized) && c.Refresh != nil && !refreshed {
+			refreshed = true
+			if rerr := c.Refresh(ctx); rerr == nil {
+				i-- // not a 429 retry
+				continue
+			}
+			return err
+		}
 		var nerr netError
 		if errors.As(err, &nerr) {
 			c.mu.Lock()
@@ -254,11 +281,13 @@ func (c *Client) do(ctx context.Context, query string, vars map[string]any, out 
 		Errors Errors          `json:"errors"`
 	}
 	if err := json.Unmarshal(raw, &r); err != nil {
-		return fmt.Errorf("hardcover: HTTP %d, bad JSON: %.200s", resp.StatusCode, raw)
+		// Not the API answering (a captive Wi-Fi portal, a proxy or CDN
+		// error page): try again later, never "not found".
+		return transient(fmt.Errorf("hardcover: HTTP %d, bad JSON: %.200s", resp.StatusCode, raw))
 	}
 	if len(r.Errors) > 0 {
 		for _, e := range r.Errors {
-			if strings.Contains(e.Message, "invalid-jwt") || strings.Contains(e.Message, "Unable to verify token") {
+			if e.authFailed() {
 				return ErrUnauthorized
 			}
 		}
@@ -302,7 +331,7 @@ func (c *Client) Me(ctx context.Context) (*Me, error) {
 		return nil, err
 	}
 	c.mu.Lock()
-	c.me, c.meAt = m, time.Now()
+	c.me, c.meAt = m, time.Now().Round(0) // wall clock: the Kindle sleeps
 	c.mu.Unlock()
 	return m, nil
 }

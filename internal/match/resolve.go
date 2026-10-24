@@ -49,6 +49,7 @@ type Library func(ctx context.Context) ([]hardcover.UserBook, error)
 func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Library) (*Result, []string, error) {
 	var steps []string
 	logf := func(f string, a ...any) { steps = append(steps, fmt.Sprintf(f, a...)) }
+	var stepErr error // a non-fatal step error: the result is not a sure "not found"
 
 	// 1 + 2: identifiers, in the order BuildIdentity made them.
 	for _, pass := range []string{book.KindASIN, book.KindISBN13} {
@@ -63,6 +64,7 @@ func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Lib
 				}
 				if err != nil {
 					logf("%s %s@%s: error: %v", q.field, q.value, x.Source, err)
+					stepErr = err
 					continue
 				}
 				books := map[int]hardcover.EditionHit{}
@@ -84,7 +86,11 @@ func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Lib
 					h = v
 				}
 				close := book.TitleClose(id.Titles, h.Book.Title)
-				if !close && !x.Dedicated {
+				// An ID found in free text (e.g. a description that names
+				// the sequel's ISBN) needs the same title, subtitle rules
+				// included; "contains" is not enough ("Dune" in "Dune
+				// Messiah").
+				if !x.Dedicated && !titleEqualAny(id.Titles, h.Book.Title) {
 					logf("%s %s@%s: book %d %q, title does not match, skipped", q.field, q.value, x.Source, h.BookID, h.Book.Title)
 					continue
 				}
@@ -117,6 +123,7 @@ func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Lib
 		}
 		if err != nil {
 			logf("library: error: %v", err)
+			stepErr = err
 		}
 		library = lib
 	}
@@ -147,6 +154,7 @@ func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Lib
 		}
 		if err != nil {
 			logf("search %q: error: %v", q, err)
+			stepErr = err
 			continue
 		}
 		sc := make([]book.Candidate, len(hits))
@@ -154,6 +162,17 @@ func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Lib
 			sc[i] = book.Candidate{Title: hits[i].Title, Authors: hits[i].Authors()}
 		}
 		m := book.MatchAll(id.Titles, id.Authors, sc)
+		// A search hit must name its authors when we know ours: title
+		// alone is not enough to pick a catalog book.
+		if len(id.Authors) > 0 {
+			kept := m[:0]
+			for _, i := range m {
+				if len(sc[i].Authors) > 0 {
+					kept = append(kept, i)
+				}
+			}
+			m = kept
+		}
 		switch {
 		case len(m) == 1:
 			h := hits[m[0]]
@@ -186,7 +205,21 @@ func Resolve(ctx context.Context, cat Catalog, id book.Identity, loadLibrary Lib
 			logf("search %q: %d results, no exact title+author match", q, len(hits))
 		}
 	}
+	if stepErr != nil {
+		// A step failed: "not found" is not known. The caller retries later
+		// instead of caching a miss.
+		return nil, steps, fmt.Errorf("lookup incomplete: %w", stepErr)
+	}
 	return nil, steps, nil
+}
+
+func titleEqualAny(titles []string, remote string) bool {
+	for _, t := range titles {
+		if book.TitleEqual(t, remote) {
+			return true
+		}
+	}
+	return false
 }
 
 // stop reports errors that end the waterfall: sign-in problems and temporary

@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/ipkstef/endpaper/internal/book"
+	"github.com/ipkstef/endpaper/internal/kindledb"
 
 	_ "modernc.org/sqlite" // pure Go, no cgo
 )
@@ -60,7 +61,28 @@ func (d *Database) BookByKey(ctx context.Context, key string) (*book.Local, erro
 }
 
 // BooksByTitle returns books with exactly this title (latest access first).
+// Any read error is returned: a partial list could make one book look
+// like the only one with this title.
 func (d *Database) BooksByTitle(ctx context.Context, title string) ([]*book.Local, error) {
+	keys, err := kindledb.RetryBusy(ctx, func() ([]string, error) { return d.keysByTitle(ctx, title) })
+	if err != nil {
+		return nil, err
+	}
+	var out []*book.Local
+	for _, k := range keys {
+		b, err := d.BookByKey(ctx, k)
+		if errors.Is(err, ErrNoBook) {
+			continue // removed meanwhile
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	return out, nil
+}
+
+func (d *Database) keysByTitle(ctx context.Context, title string) ([]string, error) {
 	db, err := d.open()
 	if err != nil {
 		return nil, err
@@ -71,21 +93,21 @@ func (d *Database) BooksByTitle(ctx context.Context, title string) ([]*book.Loca
 	if err != nil {
 		return nil, fmt.Errorf("cc.db: %w", err)
 	}
+	defer rows.Close()
 	var keys []string
 	for rows.Next() {
 		var k sql.NullString
-		if rows.Scan(&k) == nil && k.Valid {
+		if err := rows.Scan(&k); err != nil {
+			return nil, fmt.Errorf("cc.db: %w", err)
+		}
+		if k.Valid {
 			keys = append(keys, k.String)
 		}
 	}
-	rows.Close()
-	var out []*book.Local
-	for _, k := range keys {
-		if b, err := d.BookByKey(ctx, k); err == nil {
-			out = append(out, b)
-		}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("cc.db: %w", err)
 	}
-	return out, nil
+	return keys, nil
 }
 
 // Progress is one book's reading state.
@@ -97,6 +119,12 @@ type Progress struct {
 
 // AllProgress returns percent and last access for every opened book, by key.
 func (d *Database) AllProgress(ctx context.Context) (map[string]Progress, error) {
+	// Retry while the Kindle commits (hot journal): a failed read at a sleep
+	// would lose that sleep's position update.
+	return kindledb.RetryBusy(ctx, func() (map[string]Progress, error) { return d.allProgress(ctx) })
+}
+
+func (d *Database) allProgress(ctx context.Context) (map[string]Progress, error) {
 	db, err := d.open()
 	if err != nil {
 		return nil, err
@@ -127,6 +155,10 @@ func (d *Database) AllProgress(ctx context.Context) (map[string]Progress, error)
 }
 
 func (d *Database) one(ctx context.Context, q string, args ...any) (*book.Local, error) {
+	return kindledb.RetryBusy(ctx, func() (*book.Local, error) { return d.oneOnce(ctx, q, args...) })
+}
+
+func (d *Database) oneOnce(ctx context.Context, q string, args ...any) (*book.Local, error) {
 	db, err := d.open()
 	if err != nil {
 		return nil, err

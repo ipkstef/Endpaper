@@ -3,8 +3,11 @@ package syncer
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/ipkstef/endpaper/internal/book"
 	"github.com/ipkstef/endpaper/internal/store"
@@ -210,5 +213,23 @@ func TestRatingsDB(t *testing.T) {
 	}
 	if st.Count(store.TRatings) != 0 {
 		t.Fatal("sent tap still pending")
+	}
+}
+
+// A cursor saved with a wrong clock (far future) must not hide new taps.
+func TestRatingCursorInFutureIsCapped(t *testing.T) {
+	dir := t.TempDir()
+	fm := filepath.Join(dir, "fmcache.db")
+	db, _ := sql.Open("sqlite", fm)
+	defer db.Close()
+	db.Exec(`CREATE TABLE records (id INTEGER PRIMARY KEY, schema_name TEXT, created_timestamp INTEGER, record TEXT)`)
+	now := time.Now().UnixMilli()
+	db.Exec(`INSERT INTO records VALUES (1,'goodreads_book_ratings',?,'{"action_id":"write_rating","book_asin":"k","event_type":"change_rating","rating":"4"}')`, now)
+	state := filepath.Join(dir, "ratings.json")
+	future := time.Now().AddDate(5, 0, 0).UnixMilli()
+	os.WriteFile(state, []byte(fmt.Sprintf(`{"last_ms":%d,"other_ms":%d}`, future, future)), 0o600)
+	rs := &RateSync{S: &Syncer{Logf: t.Logf}, Books: fakeBooks{}, Path: fm, StatePath: state}
+	if n, err := rs.Collect(context.Background()); err != nil || n != 1 {
+		t.Fatalf("collected %d, %v; want the new tap", n, err)
 	}
 }

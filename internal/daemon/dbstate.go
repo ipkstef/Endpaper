@@ -43,12 +43,18 @@ func (b *dbState) load(jsonPath string) (*State, error) {
 		return nil, err
 	}
 	st := &State{}
-	if _, ok := b.s.Get(kvBaseline); ok {
-		if st.Snapshot, err = b.progress.Load(); err != nil {
-			return nil, err
-		}
-	} else {
-		b.progress.Load() // prime the diff copy
+	// A read error is not "no baseline": a new baseline would skip the
+	// changes made while the daemon was off.
+	_, ok, err := b.s.Lookup(kvBaseline)
+	if err != nil {
+		return nil, err
+	}
+	snap, err := b.progress.Load() // also primes the diff copy
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		st.Snapshot = snap
 	}
 	if st.Pending, err = b.pending.Load(); err != nil {
 		return nil, err

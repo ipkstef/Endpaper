@@ -68,9 +68,10 @@ type app struct {
 	logPath  string
 	home     string // install folder on the USB drive (empty: development run)
 
-	hc    *hardcover.Client // one per process: rate limiter + cached "me"
-	sy    *syncer.Syncer
-	tokMu sync.Mutex
+	hc      *hardcover.Client // one per process: rate limiter + cached "me"
+	sy      *syncer.Syncer
+	tokMu   sync.Mutex
+	unsaved *hardcover.Token // refreshed token the disk did not take (tokMu)
 
 	sdb       *store.Store
 	sdbFailed bool
@@ -375,34 +376,57 @@ func (a *app) newClient() *hardcover.Client {
 	return &hardcover.Client{
 		HTTP:     a.oauth.HTTP,
 		Endpoint: hardcover.GraphQLEndpoint,
-		Token:    a.token,
+		Token:    func(ctx context.Context) (string, error) { return a.tokenFor(ctx, false) },
+		Refresh: func(ctx context.Context) error {
+			_, err := a.tokenFor(ctx, true)
+			return err
+		},
 	}
 }
 
-// token returns a valid access token and refreshes it when it expires soon.
-// One refresh at a time: a mutex in this process and a file lock across
-// processes, then the token is read again (another caller may have
-// refreshed it already; the old refresh token may no longer work).
-func (a *app) token(ctx context.Context) (string, error) {
+// loadToken reads the token. A refreshed token that could not be saved
+// (full disk) is kept in memory and saved again here: the old refresh
+// token on disk is already used up.
+func (a *app) loadToken() (*hardcover.Token, error) {
+	if a.unsaved != nil {
+		if err := a.store.Save(a.unsaved); err == nil {
+			a.unsaved = nil
+		} else {
+			return a.unsaved, nil
+		}
+	}
+	return a.store.Load()
+}
+
+// tokenFor returns a valid access token and refreshes it when it expires
+// soon, or always with force (the server refused it). One refresh at a
+// time: a mutex in this process and a file lock across processes, then
+// the token is read again (another caller may have refreshed it already;
+// the old refresh token may no longer work).
+func (a *app) tokenFor(ctx context.Context, force bool) (string, error) {
 	a.tokMu.Lock()
 	defer a.tokMu.Unlock()
-	tok, err := a.store.Load()
+	tok, err := a.loadToken()
 	if err != nil {
 		return "", err
 	}
-	if !a.needRefresh(tok) {
+	if !force && !a.needRefresh(tok) {
 		return tok.AccessToken, nil
+	}
+	if tok.RefreshToken == "" || a.oauth.ClientID == "" {
+		return "", hardcover.ErrUnauthorized
 	}
 	unlock, err := a.store.Lock()
 	if err != nil {
 		return "", err
 	}
 	defer unlock()
-	if tok, err = a.store.Load(); err != nil {
+	before := tok.AccessToken
+	if tok, err = a.loadToken(); err != nil {
 		return "", err
 	}
-	if !a.needRefresh(tok) {
-		return tok.AccessToken, nil
+	if tok.AccessToken != before || (!force && !a.needRefresh(tok)) {
+		return tok.AccessToken, nil // another process refreshed it meanwhile
 	}
 	nt, err := a.oauth.Refresh(ctx, tok.RefreshToken)
 	if err != nil {
@@ -418,9 +442,11 @@ func (a *app) token(ctx context.Context) (string, error) {
 		nt.RefreshToken = tok.RefreshToken
 	}
 	if err := a.store.Save(nt); err != nil {
-		return "", err
+		log.Printf("token refreshed, but not saved (%v): kept in memory", err)
+		a.unsaved = nt
+	} else {
+		log.Printf("token refreshed (forced %v)", force)
 	}
-	log.Printf("token refreshed")
 	return nt.AccessToken, nil
 }
 

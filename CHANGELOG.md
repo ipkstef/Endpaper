@@ -4,6 +4,28 @@
 - "Sync now" shows when the check is done ("Done. …"); old messages clear.
 - Endpaper logo on the page, in the README and as the library cover.
 - Landing page: https://ipkstef.github.io/Endpaper/
+- Install guide: unlink Goodreads first (recommended).
+
+Robustness (code review 2026-10-24):
+- Never uninstalls by mistake while USB mode starts: the folder must be
+  gone at two checks a minute apart, with the drive mounted.
+- A book is never marked Read from a position that is past the end of
+  the text; an ISBN found in a book description needs the same title.
+- A failed lookup step means "try again", not "not found".
+- Updates: the old background sync is always replaced (killed if stuck).
+- The page reconnects after background sync restarted.
+- Token: refreshed once when Hardcover refuses it (clock behind); a
+  refreshed token is never lost when the disk is full; sign-out cannot be
+  undone by a refresh at the same moment.
+- Captive Wi-Fi portal pages count as "offline, try later".
+- No duplicate highlights or lost star taps after a state read error or
+  a run without the database; star taps in the "future" (wrong clock)
+  are no longer skipped.
+- cc.db reads retry while the Kindle commits (a sleep sync is not lost).
+- Less battery use while offline with the page open; no leaked file
+  watchers from "Check setup"; tools on the Kindle have time limits.
+- The state database refuses writes when the disk is nearly full; temp
+  files left by a power loss are removed.
 
 ## v0.1.0 — 2026-10-24
 First release.

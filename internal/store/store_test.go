@@ -86,3 +86,44 @@ func TestKVAndImport(t *testing.T) {
 		t.Fatal("not kept")
 	}
 }
+
+// A JSON file written by a run without the database (fallback) is merged
+// at the next open, although the first import mark is set.
+func TestFallbackFileMergedAgain(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(filepath.Join(dir, "s.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	f := filepath.Join(dir, "old.json")
+	calls := 0
+	imp := func([]byte) error { calls++; return nil }
+	os.WriteFile(f, []byte(`{}`), 0o600)
+	s.ImportJSON("old", f, imp)
+	s.ImportJSON("old", f, imp)          // file renamed: nothing
+	os.WriteFile(f, []byte(`{}`), 0o600) // fallback run wrote it again
+	s.ImportJSON("old", f, imp)
+	if calls != 2 {
+		t.Fatalf("imports: %d, want 2", calls)
+	}
+}
+
+// Lookup tells "missing" from "could not read".
+func TestLookupMissingVsError(t *testing.T) {
+	s, err := Open(filepath.Join(t.TempDir(), "s.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok, err := s.Lookup("nope"); ok || err != nil {
+		t.Fatalf("missing: ok %v err %v", ok, err)
+	}
+	s.Set("x", "1")
+	if v, ok, err := s.Lookup("x"); !ok || err != nil || v != "1" {
+		t.Fatalf("got %q %v %v", v, ok, err)
+	}
+	s.Close()
+	if _, ok, err := s.Lookup("x"); ok || err == nil {
+		t.Fatal("closed DB: expected an error, not \"missing\"")
+	}
+}

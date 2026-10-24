@@ -30,6 +30,7 @@ type api struct {
 	key       string
 	fire      func(string)
 	stop      func()
+	uninstall func() // asks the main loop to uninstall
 	importAll *atomic.Bool
 	upd       *updates // nil: no update check
 
@@ -39,6 +40,7 @@ type api struct {
 	login    *loginState
 	user     string
 	userBusy bool
+	userTry  time.Time // last user name fetch (wall clock)
 }
 
 type loginState struct {
@@ -50,6 +52,9 @@ type loginState struct {
 	qrText  string
 	cancel  context.CancelFunc
 }
+
+// userRetry: wait this long before fetching the user name again.
+const userRetry = 5 * time.Minute
 
 func newKey() string {
 	b := make([]byte, 16)
@@ -75,7 +80,7 @@ func (s *api) serve(ctx context.Context) (int, error) {
 		"log":          s.saveLog,
 		"logout":       s.logout,
 		"stop":         s.stopSync,
-		"uninstall":    s.uninstall,
+		"uninstall":    s.uninstallNow,
 	} {
 		fn := fn
 		mux.HandleFunc("/api/"+name, s.handle(func(ctx context.Context) (any, error) {
@@ -159,8 +164,10 @@ func (s *api) status(context.Context) (any, error) {
 		out.Login = &l
 	}
 	out.User = s.user
-	if out.SignedIn && s.user == "" && !s.userBusy {
-		s.userBusy = true
+	// The name needs the network: at most one try per userRetry (else an
+	// offline Kindle tries every few seconds while the page is open).
+	if out.SignedIn && s.user == "" && !s.userBusy && time.Since(s.userTry) >= userRetry {
+		s.userBusy, s.userTry = true, time.Now().Round(0)
 		go s.fetchUser()
 	}
 	return out, nil
@@ -190,25 +197,29 @@ func (s *api) startLogin(context.Context) (string, error) {
 		return "Sign-in already started.", nil
 	}
 	lctx, cancel := context.WithCancel(context.Background())
-	s.login = &loginState{Active: true, cancel: cancel}
+	l := &loginState{Active: true, cancel: cancel}
+	s.login = l
 	s.mu.Unlock()
 
+	// Each sign-in only changes its own state (l): after Cancel and a new
+	// Sign in, the old one must not touch the new one.
 	dc, err := s.a.oauth.RequestDeviceCode(lctx, s.a.scope)
 	if err != nil {
-		s.loginDone(fmt.Errorf("could not get a code: %w", err))
+		s.loginDone(l, fmt.Errorf("could not get a code: %w", err))
 		return "", err
 	}
 	log.Printf("login: device code issued, user code %s, expires in %ds", dc.UserCode, dc.ExpiresIn)
 	s.mu.Lock()
-	s.login.Code = dc.UserCode
-	s.login.URL = strings.TrimPrefix(dc.VerificationURI, "https://")
-	s.login.Expires = time.Now().Add(time.Duration(dc.ExpiresIn) * time.Second)
-	s.login.qrText = dc.VerificationURIComplete
-	if s.login.qrText == "" {
-		s.login.qrText = dc.VerificationURI
+	l.Code = dc.UserCode
+	l.URL = strings.TrimPrefix(dc.VerificationURI, "https://")
+	l.Expires = time.Now().Add(time.Duration(dc.ExpiresIn) * time.Second)
+	l.qrText = dc.VerificationURIComplete
+	if l.qrText == "" {
+		l.qrText = dc.VerificationURI
 	}
 	s.mu.Unlock()
 	go func() {
+		defer cancel()
 		tok, err := s.a.oauth.PollToken(lctx, dc)
 		if err == nil {
 			err = s.a.store.Save(tok)
@@ -223,24 +234,22 @@ func (s *api) startLogin(context.Context) (string, error) {
 			}
 			s.fire("signed in")
 		}
-		s.loginDone(err)
+		s.loginDone(l, err)
 	}()
 	return "", nil
 }
 
-func (s *api) loginDone(err error) {
+// loginDone ends sign-in l. Only the current sign-in is shown on the page.
+func (s *api) loginDone(l *loginState, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.login == nil {
-		return
-	}
-	s.login.Active = false
-	s.login.Code, s.login.URL, s.login.qrText = "", "", ""
+	l.Active = false
+	l.Code, l.URL, l.qrText = "", "", ""
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Printf("login: %v", err)
-		s.login.Err = err.Error()
+		l.Err = err.Error()
 	} else {
-		s.login.Err = ""
+		l.Err = ""
 	}
 }
 
@@ -312,6 +321,16 @@ func (s *api) saveLog(context.Context) (string, error) {
 
 func (s *api) logout(ctx context.Context) (string, error) {
 	_, _ = s.cancelLogin(ctx)
+	// Same locks as a token refresh: a refresh running now must not save a
+	// new token after the delete.
+	s.a.tokMu.Lock()
+	defer s.a.tokMu.Unlock()
+	unlock, err := s.a.store.Lock()
+	if err != nil {
+		return "", err
+	}
+	defer unlock()
+	s.a.unsaved = nil
 	if err := s.a.store.Delete(); err != nil {
 		return "", err
 	}
@@ -331,10 +350,10 @@ func (s *api) stopSync(context.Context) (string, error) {
 	return "Sync stopped. Tap Endpaper in your library to start it again.", nil
 }
 
-func (s *api) uninstall(context.Context) (string, error) {
+func (s *api) uninstallNow(context.Context) (string, error) {
 	go func() {
-		time.Sleep(300 * time.Millisecond)
-		s.a.uninstall(true)
+		time.Sleep(300 * time.Millisecond) // let the answer go out
+		s.uninstall()
 	}()
 	return "Endpaper was removed from this Kindle.", nil
 }

@@ -64,10 +64,19 @@ func (c *ClipSync) Run(ctx context.Context, all bool) (sent int, err error) {
 	}
 	// Cheap check first: the sent list (can be thousands of rows) is read
 	// only when My Clippings.txt changed.
-	if m := c.meta(); !all && m.Baseline && fi.Size() == m.Size && fi.ModTime().Equal(m.ModTime) {
+	// A state read error stops the run: an empty "sent" list would send
+	// every highlight again.
+	m, err := c.meta()
+	if err != nil {
+		return 0, err
+	}
+	if !all && m.Baseline && fi.Size() == m.Size && fi.ModTime().Equal(m.ModTime) {
 		return 0, nil
 	}
-	st := c.load()
+	st, err := c.load()
+	if err != nil {
+		return 0, err
+	}
 	f, err := os.Open(c.Path)
 	if err != nil {
 		return 0, err
@@ -89,7 +98,9 @@ func (c *ClipSync) Run(ctx context.Context, all bool) (sent int, err error) {
 
 	if !st.Baseline && !all {
 		for _, cl := range clips {
-			st.Sent[cl.ID()] = 0
+			if _, ok := st.Sent[cl.ID()]; !ok { // never forget a journal ID
+				st.Sent[cl.ID()] = 0
+			}
 		}
 		st.Baseline, st.Size, st.ModTime = true, fi.Size(), fi.ModTime()
 		c.S.logf("clips: first run, %d existing clippings recorded, not sent (use import to send them)", len(clips))
@@ -301,47 +312,76 @@ func locationToPage(loc int, textLen int64, pages int) int {
 	return book.PercentToPage(min(pct, 100), pages)
 }
 
-func (c *ClipSync) meta() clipMeta {
+func (c *ClipSync) meta() (clipMeta, error) {
 	if c.DB != nil {
-		c.importJSON()
+		if err := c.importJSON(); err != nil {
+			return clipMeta{}, err
+		}
 		var m clipMeta
-		c.DB.GetJSON(kvClips, &m)
-		return m
+		_, err := c.DB.LookupJSON(kvClips, &m)
+		return m, err
 	}
-	st := c.load()
-	return clipMeta{st.Baseline, st.Size, st.ModTime}
+	st, err := c.load()
+	if err != nil {
+		return clipMeta{}, err
+	}
+	return clipMeta{st.Baseline, st.Size, st.ModTime}, nil
 }
 
-func (c *ClipSync) importJSON() {
+func (c *ClipSync) importJSON() error {
 	if c.sent == nil {
 		c.sent = store.NewTable[int](c.DB, store.TClips)
 	}
-	_ = c.DB.ImportJSON("clips.json", c.StatePath, func(b []byte) error {
+	return c.DB.ImportJSON("clips.json", c.StatePath, func(b []byte) error {
 		var st ClipState
 		if json.Unmarshal(b, &st) != nil {
 			return nil
 		}
-		if err := c.sent.Save(st.Sent); err != nil {
+		// Merge: a journal ID (sent) is never replaced by 0 (only recorded
+		// at a baseline), so a fallback run's new baseline cannot make old
+		// highlights look unsent.
+		have, err := c.sent.Load()
+		if err != nil {
 			return err
 		}
-		return c.DB.SetJSON(kvClips, clipMeta{st.Baseline, st.Size, st.ModTime})
+		for id, jid := range st.Sent {
+			if old, ok := have[id]; !ok || (jid != 0 && old == 0) {
+				have[id] = jid
+			}
+		}
+		if err := c.sent.Save(have); err != nil {
+			return err
+		}
+		var m clipMeta // read directly: c.meta() would import again
+		if _, err := c.DB.LookupJSON(kvClips, &m); err != nil {
+			return err
+		}
+		m.Baseline = m.Baseline || st.Baseline
+		if st.ModTime.After(m.ModTime) {
+			m.Size, m.ModTime = st.Size, st.ModTime
+		}
+		return c.DB.SetJSON(kvClips, m)
 	})
 }
 
-func (c *ClipSync) load() *ClipState {
+func (c *ClipSync) load() (*ClipState, error) {
 	st := &ClipState{}
 	if c.DB != nil {
-		c.importJSON()
-		m := c.meta()
+		m, err := c.meta()
+		if err != nil {
+			return nil, err
+		}
 		st.Baseline, st.Size, st.ModTime = m.Baseline, m.Size, m.ModTime
-		st.Sent, _ = c.sent.Load()
+		if st.Sent, err = c.sent.Load(); err != nil {
+			return nil, err
+		}
 	} else if b, err := os.ReadFile(c.StatePath); err == nil {
 		_ = json.Unmarshal(b, st)
 	}
 	if st.Sent == nil {
 		st.Sent = map[string]int{}
 	}
-	return st
+	return st, nil
 }
 
 // save writes the state. With the DB only new or removed clips are

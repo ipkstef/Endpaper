@@ -20,9 +20,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	_ "modernc.org/sqlite" // pure Go
+
+	"github.com/ipkstef/endpaper/internal/kindledb"
 )
 
 // DefaultPath of the metrics cache.
@@ -41,7 +42,7 @@ type Rating struct {
 
 // Ratings returns rating records created after sinceMS, oldest first.
 func Ratings(ctx context.Context, path string, sinceMS int64) ([]Rating, error) {
-	return retryBusy(ctx, func() ([]Rating, error) { return ratings(ctx, path, sinceMS) })
+	return kindledb.RetryBusy(ctx, func() ([]Rating, error) { return ratings(ctx, path, sinceMS) })
 }
 
 func ratings(ctx context.Context, path string, sinceMS int64) ([]Rating, error) {
@@ -108,7 +109,7 @@ type Record struct {
 // one of prefixes, oldest first. Used to learn formats (research) and to read
 // Goodreads shelf choices from the end-of-book dialog.
 func Records(ctx context.Context, path string, sinceMS int64, prefixes ...string) ([]Record, error) {
-	return retryBusy(ctx, func() ([]Record, error) { return records(ctx, path, sinceMS, prefixes...) })
+	return kindledb.RetryBusy(ctx, func() ([]Record, error) { return records(ctx, path, sinceMS, prefixes...) })
 }
 
 func records(ctx context.Context, path string, sinceMS int64, prefixes ...string) ([]Record, error) {
@@ -200,27 +201,4 @@ func openRO(path string) (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(1)
 	return db, nil
-}
-
-// retryBusy runs read again (up to 3 times, 1 s apart) when the Kindle is in
-// the middle of a commit: a hot journal gives "readonly database (776)" on a
-// read-only open, a lock gives "database is locked".
-func retryBusy[T any](ctx context.Context, read func() (T, error)) (T, error) {
-	for i := 0; ; i++ {
-		v, err := read()
-		if err == nil || i >= 3 || !busy(err) {
-			return v, err
-		}
-		select {
-		case <-ctx.Done():
-			return v, err
-		case <-time.After(time.Second):
-		}
-	}
-}
-
-func busy(err error) bool {
-	s := err.Error()
-	return strings.Contains(s, "readonly database") || strings.Contains(s, "database is locked") ||
-		strings.Contains(s, "SQLITE_BUSY")
 }

@@ -32,6 +32,11 @@ func ResolvePercent(l *book.Local, meta *mobi.Meta, sc *sidecar.Position) (float
 		if pos < 0 || textLen <= 0 {
 			return 0
 		}
+		// A position past the end means the text length is of another
+		// format part (combo MOBI/KF8): the value is wrong, not 100 %.
+		if float64(pos) > float64(textLen)*1.01 {
+			return 0
+		}
 		return min(100, float64(pos)/float64(textLen)*100)
 	}
 

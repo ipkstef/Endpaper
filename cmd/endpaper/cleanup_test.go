@@ -68,3 +68,24 @@ func TestMigrateLegacy(t *testing.T) {
 		}
 	}
 }
+
+// An old WAL is never put next to a newer Endpaper database.
+func TestMigrateKeepsDBFilesTogether(t *testing.T) {
+	old := filepath.Join(t.TempDir(), "hcbridge")
+	saved := legacy
+	defer func() { legacy = saved }()
+	legacy.stateDir, legacy.uiDir, legacy.usbPaths, legacy.appID = old, t.TempDir(), nil, "test.none"
+	newDir := filepath.Join(t.TempDir(), "endpaper")
+	os.MkdirAll(old, 0o700)
+	os.MkdirAll(newDir, 0o700)
+	os.WriteFile(filepath.Join(old, "hcbridge.db"), []byte("old"), 0o600)
+	os.WriteFile(filepath.Join(old, "hcbridge.db-wal"), []byte("old wal"), 0o600)
+	os.WriteFile(filepath.Join(newDir, "endpaper.db"), []byte("new"), 0o600)
+	migrateLegacy(newDir, func() bool { return false })
+	if _, err := os.Stat(filepath.Join(newDir, "endpaper.db-wal")); err == nil {
+		t.Fatal("old WAL moved next to the new database")
+	}
+	if b, _ := os.ReadFile(filepath.Join(newDir, "endpaper.db")); string(b) != "new" {
+		t.Fatal("new database changed")
+	}
+}

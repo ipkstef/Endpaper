@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -49,7 +50,9 @@ func installGone(home string, mounted func() bool) bool {
 		return false
 	}
 	_, err := os.Stat(home)
-	return os.IsNotExist(err)
+	// Look at the mount again: an unmount between the two checks (USB
+	// mode starting) makes the folder look deleted.
+	return os.IsNotExist(err) && mounted()
 }
 
 // uninstall removes everything we put on the Kindle, then exits:
@@ -127,13 +130,22 @@ func migrateLegacy(stateDir string, mounted func() bool) (notes []string) {
 	}
 	entries, _ := os.ReadDir(legacy.stateDir)
 	moved := 0
+	// The database and its -wal / -shm files move together or not at all:
+	// SQLite does not check that a WAL belongs to its database.
+	dbGroup := []string{"hcbridge.db", "hcbridge.db-wal", "hcbridge.db-shm"}
+	_, newDB := os.Stat(filepath.Join(stateDir, "endpaper.db"))
+	moveDB := newDB != nil // no Endpaper database yet
 	for _, e := range entries {
 		name := e.Name()
+		inGroup := slices.Contains(dbGroup, name)
+		if inGroup && !moveDB {
+			continue
+		}
 		if n, ok := legacyNames[name]; ok {
 			name = n
 		}
 		dst := filepath.Join(stateDir, name)
-		if _, err := os.Stat(dst); err == nil {
+		if _, err := os.Stat(dst); err == nil && !inGroup {
 			continue // never overwrite newer state
 		}
 		if os.Rename(filepath.Join(legacy.stateDir, e.Name()), dst) == nil {

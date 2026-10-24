@@ -41,6 +41,13 @@ should work but are not tested yet; please report results.
 
 ## Install
 
+**Before you start (recommended):** unlink Goodreads on the Kindle
+(Settings > Your Account; the exact menu name varies by firmware). Endpaper works
+either way, but with Goodreads linked the Kindle shows a Goodreads
+"Rating Error" box after a star rating on sideloaded books, and it may also
+send your progress to Goodreads. Your star taps still reach Hardcover when
+Goodreads is unlinked.
+
 1. Download `endpaper-<version>.zip` from the
    [releases page](https://github.com/ipkstef/endpaper/releases).
 2. Connect the Kindle to your computer with USB.
@@ -74,8 +81,6 @@ Leave the page with the Home button.
 
 ### Tips
 
-- **Unlink Goodreads** on the Kindle (Settings > Your Account) to stop
-  Goodreads error boxes after a rating. Ratings still go to Hardcover.
 - A book that is not found on Hardcover is skipped. Add the right edition to
   any shelf on hardcover.app; it syncs within an hour.
 

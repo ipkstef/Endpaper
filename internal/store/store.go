@@ -12,6 +12,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +20,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"github.com/ipkstef/endpaper/internal/atomicfile"
 )
 
 // Tables, all "(k TEXT PRIMARY KEY, v TEXT NOT NULL) WITHOUT ROWID".
@@ -99,11 +102,36 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// Get reads one kv value ("" and false if missing).
+// Get reads one kv value ("" and false if missing or unreadable). Use
+// Lookup where a read error must not count as "missing".
 func (s *Store) Get(name string) (string, bool) {
-	var v string
-	err := s.db.QueryRow(`SELECT v FROM kv WHERE k = ?`, name).Scan(&v)
-	return v, err == nil
+	v, ok, _ := s.Lookup(name)
+	return v, ok
+}
+
+// Lookup reads one kv value: ok false and err nil only when it is missing.
+func (s *Store) Lookup(name string) (v string, ok bool, err error) {
+	err = s.db.QueryRow(`SELECT v FROM kv WHERE k = ?`, name).Scan(&v)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return "", false, nil
+	case err != nil:
+		return "", false, fmt.Errorf("store: read %s: %w", name, err)
+	}
+	return v, true, nil
+}
+
+// LookupJSON reads a kv value as JSON (see Lookup). A value that does not
+// decode is an error.
+func (s *Store) LookupJSON(name string, v any) (bool, error) {
+	raw, ok, err := s.Lookup(name)
+	if !ok || err != nil {
+		return ok, err
+	}
+	if err := json.Unmarshal([]byte(raw), v); err != nil {
+		return false, fmt.Errorf("store: decode %s: %w", name, err)
+	}
+	return true, nil
 }
 
 // Set writes one kv value.
@@ -145,10 +173,16 @@ type Op struct {
 	args []any
 }
 
-// Apply runs ops in one transaction.
+// Apply runs ops in one transaction. It refuses (atomicfile.ErrLowSpace)
+// when the file system is nearly full: /var/local is shared with the Kindle
+// system (cc.db), and filling it could break the Kindle. The data stays in
+// memory and is written at a later save.
 func (s *Store) Apply(ops ...Op) error {
 	if len(ops) == 0 {
 		return nil
+	}
+	if err := atomicfile.CheckFree(filepath.Dir(s.Path), 0); err != nil {
+		return fmt.Errorf("store: %w", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -273,15 +307,19 @@ func (t *Table[T]) Put(key string, v T) error {
 	return err
 }
 
-// ImportJSON runs import once per name: if the kv mark "migrated.<name>" is
-// missing and file exists, import(file) moves its data into the store; then
-// the file is renamed to <file>.migrated and the mark is set.
+// ImportJSON moves a JSON state file into the store: if file exists,
+// import(file) merges its data (upsert), the file is renamed to
+// <file>.migrated and the kv mark "migrated.<name>" is set. A file that
+// is there although the mark is set was written by a run that could not
+// open the database (JSON fallback): it is merged too, so that run's work
+// is not lost. Importers must merge, never wipe.
 func (s *Store) ImportJSON(name, file string, importFn func(b []byte) error) error {
 	mark := "migrated." + name
-	if _, ok := s.Get(mark); ok {
+	_, marked := s.Get(mark)
+	b, err := os.ReadFile(file)
+	if marked && os.IsNotExist(err) {
 		return nil
 	}
-	b, err := os.ReadFile(file)
 	switch {
 	case os.IsNotExist(err):
 	case err != nil:

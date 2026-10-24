@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"sync"
 	"time"
@@ -54,7 +55,6 @@ func (c *BookCache) load() {
 	if c.m != nil {
 		return
 	}
-	c.m = map[string]BookMap{}
 	if c.DB != nil {
 		c.t = store.NewTable[BookMap](c.DB, store.TBookMap)
 		_ = c.DB.ImportJSON("bookmap.json", c.Path, func(b []byte) error {
@@ -64,11 +64,16 @@ func (c *BookCache) load() {
 			}
 			return c.t.Save(m)
 		})
+		// On a read error c.m stays nil: the next call tries again (an empty
+		// cache now would only cost look-ups, a stuck one costs them all day).
 		if m, err := c.t.Load(); err == nil {
 			c.m = m
+			return
 		}
+		c.t = nil
 		return
 	}
+	c.m = map[string]BookMap{}
 	if b, err := os.ReadFile(c.Path); err == nil {
 		_ = json.Unmarshal(b, &c.m)
 	}
@@ -98,11 +103,7 @@ func (c *BookCache) Put(key string, m BookMap) error {
 	if old, ok := c.m[key]; ok && old.BookID == m.BookID && m.LastPages == 0 {
 		m.LastPage, m.LastPages = old.LastPage, old.LastPages // keep across re-matches
 	}
-	c.m[key] = m
-	if c.t != nil {
-		return c.t.Put(key, m) // one row
-	}
-	return atomicfile.GuardedJSON(c.Path, c.m, 0o600)
+	return c.write(key, m)
 }
 
 // SetSent records the page last sent for a book (no-op if not cached).
@@ -115,9 +116,31 @@ func (c *BookCache) SetSent(key string, page, pages int) error {
 		return nil
 	}
 	m.LastPage, m.LastPages = page, pages
-	c.m[key] = m
-	if c.t != nil {
-		return c.t.Put(key, m)
+	return c.write(key, m)
+}
+
+// write stores one entry. Memory changes only after the write worked: a
+// failed write must be tried again, not skipped as "already saved".
+func (c *BookCache) write(key string, m BookMap) error {
+	if c.m == nil { // the database could not be read
+		return errors.New("book cache: not loaded")
 	}
-	return atomicfile.GuardedJSON(c.Path, c.m, 0o600)
+	if c.t != nil {
+		if err := c.t.Put(key, m); err != nil {
+			return err
+		}
+		c.m[key] = m
+		return nil
+	}
+	old, had := c.m[key]
+	c.m[key] = m
+	if err := atomicfile.GuardedJSON(c.Path, c.m, 0o600); err != nil {
+		if had {
+			c.m[key] = old
+		} else {
+			delete(c.m, key)
+		}
+		return err
+	}
+	return nil
 }

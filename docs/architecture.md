@@ -78,6 +78,7 @@ daemon stops trying until Wi-Fi is back; changes wait in the state DB.
 | `internal/store` | our SQLite state DB (diff writes) |
 | `internal/hardcover` | OAuth device flow, token refresh, GraphQL client |
 | `internal/metrics` | `fmcache.db` (end-of-book ratings) |
+| `internal/kindledb` | retry for reads of the Kindle's DBs during its commits |
 | `internal/clippings` | `My Clippings.txt` parser |
 | `internal/events` | LIPC and inotify watchers |
 | `internal/appreg` | our rows in the Kindle's `appreg.db` |

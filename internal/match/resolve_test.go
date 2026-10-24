@@ -169,3 +169,38 @@ func TestClearWinnerByReaders(t *testing.T) {
 		t.Fatal("picked with too few readers")
 	}
 }
+
+// An ISBN found in free text (a description) needs the same title:
+// "Dune" must not take the sequel's ISBN ("Dune Messiah").
+func TestFreeTextIDNeedsSameTitle(t *testing.T) {
+	cat := &fakeCat{editions: map[string][]hardcover.EditionHit{
+		"isbn_13=9780306406157": {ed(4, 400, "Dune Messiah")},
+	}}
+	id := book.Identity{Titles: []string{"Dune"}, Authors: []string{"Frank Herbert"},
+		IDs: []book.ID{{Kind: book.KindISBN13, Value: "9780306406157", Source: "exth103", Dedicated: false}}}
+	if r, steps, _ := Resolve(context.Background(), cat, id, nil); r != nil {
+		t.Fatalf("sequel accepted: %+v %v", r, steps)
+	}
+}
+
+// A step that failed (not a network error) means "not found" is not
+// known: Resolve returns an error, so no miss is cached.
+func TestStepErrorIsNotNotFound(t *testing.T) {
+	cat := &fakeCat{}
+	id := withIDs(book.ID{Kind: book.KindASIN, Value: "B0ERRORERR", Source: "exth113", Dedicated: true})
+	r, _, err := Resolve(context.Background(), cat, id, nil)
+	if r != nil || err == nil {
+		t.Fatalf("got %+v, %v", r, err)
+	}
+}
+
+// A search hit without authors is not taken when the book has authors.
+func TestSearchHitNeedsAuthors(t *testing.T) {
+	q := "A Parade of Horribles Matt Dinniman"
+	cat := &fakeCat{search: map[string][]hardcover.BookHit{q: {
+		{ID: 10, Title: "A Parade of Horribles"},
+	}}}
+	if r, _, _ := Resolve(context.Background(), cat, parade, nil); r != nil {
+		t.Fatalf("author-less hit accepted: %+v", r)
+	}
+}

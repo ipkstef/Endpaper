@@ -58,6 +58,7 @@ internal/daemon/     change detection + state
 internal/store/      our state DB (SQLite, diff writes)
 internal/hardcover/  OAuth device flow, token refresh, GraphQL client
 internal/metrics/    fmcache.db reader (end-of-book star rating)
+internal/kindledb/   retry for read-only Kindle DB reads during a commit
 internal/clippings/  My Clippings.txt parser
 internal/events/     LIPC + inotify watchers
 internal/appreg/     our rows in the Kindle's appreg.db

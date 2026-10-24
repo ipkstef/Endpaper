@@ -161,3 +161,38 @@ func TestTimeoutIsNotOffline(t *testing.T) {
 		t.Fatalf("err %v, offline %v", err, c.Offline())
 	}
 }
+
+// A refused token is refreshed once and the call repeated (clock behind,
+// token revoked early); a second refusal is returned.
+func TestRefreshOnUnauthorized(t *testing.T) {
+	tok := "old"
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer new" {
+			w.Write([]byte(`{"errors":[{"message":"Could not verify JWT: JWTExpired","extensions":{"code":"invalid-jwt"}}]}`))
+			return
+		}
+		w.Write([]byte(`{"data":{"me":[{"id":1,"username":"u"}]}}`))
+	})
+	c.Token = func(context.Context) (string, error) { return tok, nil }
+	refreshes := 0
+	c.Refresh = func(context.Context) error { refreshes++; tok = "new"; return nil }
+	if me, err := c.Me(context.Background()); err != nil || me.Username != "u" || refreshes != 1 {
+		t.Fatalf("got %+v %v, refreshes %d", me, err, refreshes)
+	}
+	c.ForgetMe()
+	c.Refresh = func(context.Context) error { refreshes++; return nil } // token stays refused
+	tok = "old"
+	if _, err := c.Me(context.Background()); !errors.Is(err, ErrUnauthorized) || refreshes != 2 {
+		t.Fatalf("second refusal: %v, refreshes %d", err, refreshes)
+	}
+}
+
+// An HTML page instead of JSON (captive Wi-Fi portal) is temporary.
+func TestBadJSONIsTransient(t *testing.T) {
+	c := testClient(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`<html>Sign in to the hotel Wi-Fi</html>`))
+	})
+	if _, err := c.Me(context.Background()); !IsTransient(err) {
+		t.Fatalf("got %v", err)
+	}
+}

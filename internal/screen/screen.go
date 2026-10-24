@@ -3,10 +3,22 @@
 package screen
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"time"
 )
+
+// toolTimeout: eips and lipc-set-prop answer at once; a hung one (busy
+// pillow, stuck framebuffer) must not block the caller for good.
+const toolTimeout = 10 * time.Second
+
+func run(name string, args ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), toolTimeout)
+	defer cancel()
+	return exec.CommandContext(ctx, name, args...).Run()
+}
 
 // Screen writes lines from a start row.
 type Screen struct {
@@ -25,7 +37,7 @@ func (s *Screen) Show(lines ...string) {
 	for i, l := range lines {
 		fmt.Println(l)
 		if s.eips != "" {
-			_ = exec.Command(s.eips, "1", fmt.Sprint(s.Row+i), fmt.Sprintf("%-46s", l)).Run()
+			_ = run(s.eips, "1", fmt.Sprint(s.Row+i), fmt.Sprintf("%-46s", l))
 		}
 	}
 }
@@ -61,5 +73,5 @@ func Alert(title, text string, autoHideMs int) error {
 	if err != nil {
 		return nil
 	}
-	return exec.Command(bin, "com.lab126.pillow", "pillowAlert", AlertParams(title, text, autoHideMs)).Run()
+	return run(bin, "com.lab126.pillow", "pillowAlert", AlertParams(title, text, autoHideMs))
 }

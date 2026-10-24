@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestWrite(t *testing.T) {
@@ -43,5 +44,26 @@ func TestGuardedLowSpace(t *testing.T) {
 	MinFree = 0
 	if err := GuardedJSON(p, 1, 0o600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCleanTemp(t *testing.T) {
+	dir := t.TempDir()
+	oldTmp := filepath.Join(dir, "state.json.tmp123")
+	newTmp := filepath.Join(dir, "state.json.tmp456")
+	keep := filepath.Join(dir, "state.json")
+	for _, p := range []string{oldTmp, newTmp, keep} {
+		os.WriteFile(p, []byte("x"), 0o600)
+	}
+	past := time.Now().Add(-2 * time.Hour)
+	os.Chtimes(oldTmp, past, past)
+	os.Chtimes(keep, past, past)
+	if n := CleanTemp(dir); n != 1 {
+		t.Fatalf("removed %d, want 1", n)
+	}
+	for p, want := range map[string]bool{oldTmp: false, newTmp: true, keep: true} {
+		if _, err := os.Stat(p); (err == nil) != want {
+			t.Fatalf("%s: exists %v, want %v", filepath.Base(p), err == nil, want)
+		}
 	}
 }

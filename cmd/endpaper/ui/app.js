@@ -11,6 +11,8 @@
   var waitSince = 0;    // "sync now": lastAt before the tap; 0 = not waiting
   var waitStart = 0;
   var last = null;      // last status
+  var shownErr = "";    // sign-in error already shown
+  var cfgAt = 0;        // last config.js reload (ms)
 
   function $(id) { return document.getElementById(id); }
   function show(id, on) {
@@ -39,12 +41,41 @@
   }
 
   function message(text) {
+    if (text && text === $("msg").textContent && msgAt) { return; } // same text: keep its age
     if (text) { setText("msg", text); }
     show("msg", !!text);
     msgAt = text ? new Date().getTime() : 0;
   }
 
+  // The daemon writes a new port and key at each start. A page that stayed
+  // open across a restart reloads config.js (at most every 10 s).
+  function reloadConfig(done) {
+    var now = new Date().getTime();
+    if (now - cfgAt < 10000) { done(false); return; }
+    cfgAt = now;
+    // "?t=" defeats a cache; if this WebKit does not accept a query on a
+    // file:// URL (UNVERIFIED), try the plain name once.
+    load("config.js?t=" + now, function (ok) {
+      if (ok) { done(apply()); return; }
+      load("config.js", function (ok2) { done(ok2 && apply()); });
+    });
+  }
+  function load(src, cb) {
+    var el = document.createElement("script");
+    el.src = src;
+    el.onload = function () { cb(true); };
+    el.onerror = function () { cb(false); };
+    document.getElementsByTagName("head")[0].appendChild(el);
+  }
+  function apply() {
+    if (!window.HC || HC.key === key) { return false; }
+    base = "http://127.0.0.1:" + HC.port + "/api/";
+    key = HC.key;
+    return true;
+  }
+
   function render(s) {
+    if (s && s.error) { s = null; } // bad key or server error: not a status
     last = s;
     show("loading", false);
     var now = new Date().getTime();
@@ -86,7 +117,10 @@
         }
         setText("ucode", login.code);
       }
-      if (login.error) { message("Sign-in failed: " + login.error); }
+      if (login.error && login.error !== shownErr) {
+        shownErr = login.error;
+        message("Sign-in failed: " + login.error);
+      }
     } else {
       setText("user", s.user || "...");
       setText("last", s.lastCheck || "not yet");
@@ -103,7 +137,17 @@
     timer = setTimeout(refresh, ms);
   }
 
-  function refresh() { call("status", "GET", render); }
+  function refresh() {
+    call("status", "GET", function (s) {
+      if (!s || s.error) {
+        reloadConfig(function (changed) {
+          if (changed) { call("status", "GET", render); } else { render(null); }
+        });
+        return;
+      }
+      render(s);
+    });
+  }
 
   function act(name) {
     message("Working...");
