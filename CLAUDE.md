@@ -20,7 +20,7 @@ state from the **stock Amazon Kindle reader** and sends it to **Hardcover.app**.
 1. **Companion daemon, not a reader.** Event-driven (LIPC + inotify, see
    `docs/roadmap.md` §1), slow poll only as a safety net. Send only on change.
    Near-real-time is not required; a sync after the user closes the book is fine.
-2. **Data source priority** (see `docs/kindle-data-sources.md`):
+2. **Data source priority** (see `docs/research/kindle-data-sources.md`):
    1. Kindle local reading DB (e.g. `cc.db`) — most likely stable across firmware.
    2. Filesystem / process checks — which book is open.
    3. LIPC (`lipc-get-prop`) — extra data where available. Never required.
@@ -43,27 +43,32 @@ state from the **stock Amazon Kindle reader** and sends it to **Hardcover.app**.
    Risk: new Go needs a newer Linux kernel than old Kindles have. Pin the Go
    version after a test binary runs on a real device (see `docs/open-questions.md`).
 
-## Proposed layout
+## Layout
 ```
-cmd/daemon/          entry point, poll loop, change detection
+cmd/endpaper/        the program: app (library tap), daemon, local page API,
+                     uninstall, dev commands
+cmd/endpaper/ui/     Mesquite page (ES5), embedded in the binary
 internal/readers/    cc.db reader
 internal/sidecar/    KRDS sidecar reader (.azw3f lpr/fpr)
-internal/clippings/  My Clippings.txt parser
-internal/metrics/    fmcache.db reader (end-of-book star rating)
-internal/syncer/     sync logic: progress, finish, clips, ratings
-internal/daemon/     change detection + state
-internal/events/     LIPC + inotify watchers
+internal/mobi/       EXTH metadata (ISBN, ASIN) from book files
 internal/book/       book identity (ASIN, title, author, ISBN)
+internal/match/      identify waterfall (ASIN → ISBN → library → search)
+internal/syncer/     sync logic: progress, finish, re-read, clips, ratings
+internal/daemon/     change detection + state
+internal/store/      our state DB (SQLite, diff writes)
 internal/hardcover/  OAuth device flow, token refresh, GraphQL client
-internal/config/     config + token storage
-internal/store/      our state DB (SQLite)
-internal/appreg/     register our page in the Kindle's appreg.db
-cmd/endpaper/        the program: app (library tap), daemon, local page API,
-                     ui/ (Mesquite page, embedded), dev commands
+internal/metrics/    fmcache.db reader (end-of-book star rating)
+internal/clippings/  My Clippings.txt parser
+internal/events/     LIPC + inotify watchers
+internal/appreg/     our rows in the Kindle's appreg.db
+internal/screen/     eips text, pillow alert box
+internal/config/     paths + token storage
+internal/atomicfile/ safe file writes
 internal/certs/      bundled CA roots
-packaging/kindle/    documents/Endpaper.sh (the library item)
-scripts/             build scripts
-docs/                context docs (read these)
+packaging/kindle/    documents/Endpaper.sh (library item) + cover.png
+scripts/build.sh     release zip
+site/                landing page (GitHub Pages)
+docs/                see docs/README.md
 ```
 
 ## Where we left off
@@ -77,7 +82,7 @@ install (`migrateLegacy`). GitHub repo: `ipkstef/endpaper` (renamed from
 Core sync is done and **works on device** (e118f27): progress (cc.db,
 sleep sidecar fallback), auto-add, finish, re-read, ratings + result box,
 highlights/notes, offline retry, SQLite state, self-test. History of the
-research and device results: `docs/findings-bellatrix-5.17.1.md`,
+research and device results: `docs/research/findings-bellatrix-5.17.1.md`,
 `docs/roadmap.md`.
 
 Distribution (user decisions 2026-10-02 … 10-24): **no KUAL, no KPM.** A
@@ -102,19 +107,16 @@ ID, old-kernel device check. v0.1.0: the user tags it on github.com
 Go version still open (needs an old-kernel device); builds use Go 1.23.
 
 ## Docs
-- `docs/architecture.md` — data flow and sync loop
-- `docs/kindle-data-sources.md` — cc.db, LIPC services, APNX, research plan
-- `docs/hardcover-api.md` — GraphQL + OAuth device flow details
-- `docs/open-questions.md` — unknowns and risks
-- `docs/references.md` — links and prior art
-- `docs/findings-bellatrix-5.17.1.md` — results from the user's Kindle
-- `docs/roadmap.md` — user goals and plan to the end product
-- `docs/hardcover-features.md` — journals, ratings, finish, re-read, scopes, limits
-- `docs/decisions/embedded-db.md` — state DB choice (modernc sqlite, later)
-- `docs/kindlemodding-notes.md` — KindleModding wiki: scriptlets, KPM, boot, appreg
-- `docs/testing.md` — how we test: fixtures, self-test, one checklist per build
-- `site/` — public landing page (GitHub Pages, `.github/workflows/pages.yml`)
-- `docs/decisions/telemetry.md` — opt-in telemetry to S3 (draft, user decisions open)
+Index: `docs/README.md`.
+- `docs/architecture.md` — parts, triggers, one scan, packages
+- `docs/testing.md` — fixtures, self-test, one checklist per build
+- `docs/roadmap.md` — user goals, decisions and their history
+- `docs/open-questions.md` — what is still unknown
+- `docs/decisions/` — embedded DB, telemetry (draft)
+- `docs/research/` — device findings (FW 5.17.1), Kindle data sources,
+  KindleModding notes, Hardcover API + features, references
+- `CHANGELOG.md` — user-facing changes per release
+- `site/` — landing page (GitHub Pages, `.github/workflows/pages.yml`)
 
 ## Working rules for Claude
 - Mark anything not verified on a real device or in real docs as **UNVERIFIED**.

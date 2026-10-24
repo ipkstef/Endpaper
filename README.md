@@ -1,9 +1,16 @@
-<p align="center"><img src="docs/img/logo.png" width="260" alt="Endpaper logo: an open book"></p>
+<h1 align="center"><img src="docs/img/logo.png" width="260" alt="Endpaper"></h1>
 
-# Endpaper
+<p align="center"><b>A native Kindle → <a href="https://hardcover.app">Hardcover.app</a> sync.</b></p>
 
-**A native Kindle → [Hardcover.app](https://hardcover.app) sync.**
-Website: <https://ipkstef.github.io/Endpaper/>
+<p align="center">
+  <a href="https://github.com/ipkstef/Endpaper/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/ipkstef/Endpaper?include_prereleases&color=161616"></a>
+  <a href="https://github.com/ipkstef/Endpaper/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ipkstef/Endpaper/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-161616"></a>
+</p>
+
+<p align="center"><a href="https://ipkstef.github.io/Endpaper/">Website</a> ·
+<a href="https://github.com/ipkstef/Endpaper/releases/latest">Download</a> ·
+<a href="CHANGELOG.md">Changelog</a></p>
 
 Read on your jailbroken Kindle as usual. Endpaper is a small background
 program that sends your reading progress to Hardcover.
@@ -113,8 +120,19 @@ go test ./...
 HC_CLIENT_ID=<your Hardcover OAuth client id> ./scripts/build.sh   # dist/endpaper-<version>.zip
 ```
 
-One static ARM binary in Go (no system libraries needed). The design and
-the research behind it are in `docs/` (start with `docs/architecture.md`).
+One static ARM binary in Go (no system libraries needed). How it works:
+[`docs/architecture.md`](docs/architecture.md); all docs:
+[`docs/`](docs/README.md).
+
+```
+cmd/endpaper/        the program: launcher, daemon, local page API
+cmd/endpaper/ui/     the Kindle page (embedded in the binary)
+internal/            readers, sync logic, Hardcover client, state DB, ...
+packaging/kindle/    library item (Endpaper.sh) and its cover
+scripts/build.sh     builds dist/endpaper-<version>.zip
+site/                the website (GitHub Pages)
+docs/                architecture, testing, decisions, research
+```
 
 Releases: set the repository secret `HC_CLIENT_ID`, then push a tag such
 as `v0.1.0`. The release workflow tests, builds and publishes the zip.

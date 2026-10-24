@@ -1,61 +1,97 @@
 # Architecture
 
-## Data flow
+Endpaper is one static ARM binary (`cmd/endpaper`, Go, `CGO_ENABLED=0`) with
+a small web page for the Kindle. It only reads the Kindle's files and talks
+to Hardcover's GraphQL API.
+
+## Parts on the Kindle
+
 ```
-        Amazon Kindle reader (stock, unmodified)
-                        │
-                 Kindle local state
-          ┌─────────────┼─────────────┐
-     Local DB       Filesystem       LIPC / DBus
-     (cc.db)        / processes      (optional)
-          └─────────────┼─────────────┘
-                        │
-               Companion daemon
-          ┌─────────────┴─────────────┐
-     Book identity               Position
-     ASIN / ISBN / title         location, percent,
-     / author                    page (if APNX)
-                        │
-                        ▼
-              Hardcover GraphQL API
+ Library item  documents/Endpaper.sh ── tap ──▶ endpaper app
+                                                  │ starts (if needed)
+                                                  ▼
+ ┌──────────────────────── endpaper daemon ────────────────────────┐
+ │ events ─▶ debounce ─▶ scan ─▶ syncer ─▶ Hardcover GraphQL        │
+ │                         │                                         │
+ │                    state DB (SQLite)        local page API        │
+ │                                             127.0.0.1:<random>    │
+ └───────────────────────────────────────────────────▲──────────────┘
+                                                     │ XHR + key
+                         Mesquite page  /var/local/mesquite/endpaper
+                         (registered in /var/local/appreg.db)
 ```
 
-## Sync loop
-```
-every ~30s:
-    state = best_available_state(backends)   # capability model
-    if state == last_sent: continue
-    hc_book = resolve(state.book)            # cache ASIN → Hardcover book/edition
-    if not hc_book: log + skip (do not guess)
-    update_hardcover_progress(hc_book, state)
-    last_sent = state (persist to disk)
-```
+| Path | What | Why there |
+|---|---|---|
+| `/mnt/us/documents/Endpaper.sh` | library item (scriptlet) | the user taps it |
+| `/mnt/us/endpaper/` | binary, README, LICENSE | USB-visible; deleting it uninstalls |
+| `/tmp/endpaper` | running copy of the binary | `/mnt/us` is FAT (no exec), RAM |
+| `/var/local/endpaper/` | token, `endpaper.db`, log | ext3, kept across reboots and USB mode |
+| `/var/local/mesquite/endpaper/` | the page + `config.js` (port, key) | readable by Mesquite |
 
-## Position model
-Canonical:
-```json
-{ "book": "B0XXXXXXXX", "progress": 0.37, "location": 4812 }
-```
-Optional, only with a reliable page map:
-```json
-{ "page": 147 }
-```
+## Triggers (event driven)
 
-## Capability model
-| Backend    | Purpose                    | Required? |
-|------------|----------------------------|-----------|
-| database   | persisted reading state    | primary   |
-| filesystem | which book is open         | fallback  |
-| lipc       | live/richer progress       | optional  |
-| pagemap    | location → printed page    | optional (APNX only) |
+| Event | Source | Meaning |
+|---|---|---|
+| `appPaused` reader | LIPC `com.lab126.appmgrd` | user left the book |
+| `goingToScreenSaver` | LIPC `com.lab126.powerd` | sleep (also writes the position) |
+| `connectionAvailable` | LIPC `com.lab126.cmd` | Wi-Fi back: send what waits |
+| `cc.db` journal deleted / WAL written | inotify | the Kindle committed reading data |
+| `fmcache.db` commit | inotify | a star rating was tapped (sent at once) |
+| Sync now / sign-in | page API | user action |
+| safety poll, 15 min | timer | skipped while the reader is open |
 
-Each backend reports what it can supply on this device. The daemon merges the
-best data. A missing backend must never crash the daemon.
+Triggers within 5 s join one scan. Each source is optional: a missing one
+never stops the daemon (capability model).
 
-## Install target (user view)
-1. Jailbreak Kindle.
-2. Unzip the release onto the Kindle drive (`documents/Endpaper.sh` +
-   `endpaper/`).
-3. Tap "Endpaper" in the library → our page shows a code/QR → approve on
-   phone.
-4. Done. After a reboot, tap "Endpaper" once (no autostart at boot).
+## One scan
+
+1. Read all books from `cc.db` (read-only) and compare with the snapshot.
+2. For each changed book, oldest first: **identify** it on Hardcover
+   (waterfall: ASIN → ISBN → own library → search; never guess), then
+   **sync**: progress (forward only), auto-add, finish (> 99 % or read
+   state 2), re-read.
+3. Then ratings (`fmcache.db`) and highlights/notes (`My Clippings.txt`).
+4. Save the state by diff (only changed rows; "Last check" at most hourly
+   unless the user asked).
+
+Position source order: `cc.db` percent → `cc.db` position ÷ length →
+sidecar `.azw3f` (fallback, never finishes a book). Details:
+`docs/research/findings-bellatrix-5.17.1.md`.
+
+All Hardcover writes run in one goroutine. Offline (DNS or dial errors) the
+daemon stops trying until Wi-Fi is back; changes wait in the state DB.
+
+## Packages
+
+| Package | Job |
+|---|---|
+| `cmd/endpaper` | commands, daemon loop, page API, launcher, uninstall |
+| `cmd/endpaper/ui` | the Mesquite page (ES5 HTML/JS, embedded in the binary) |
+| `internal/readers` | `cc.db` reader |
+| `internal/sidecar` | KRDS sidecar reader (`.azw3f` `lpr`) |
+| `internal/mobi` | EXTH metadata (ISBN, ASIN) from book files |
+| `internal/book` | book identity, title rules |
+| `internal/match` | the identify waterfall |
+| `internal/syncer` | progress, finish, re-read, ratings, clips |
+| `internal/daemon` | change detection, retries, state |
+| `internal/store` | our SQLite state DB (diff writes) |
+| `internal/hardcover` | OAuth device flow, token refresh, GraphQL client |
+| `internal/metrics` | `fmcache.db` (end-of-book ratings) |
+| `internal/clippings` | `My Clippings.txt` parser |
+| `internal/events` | LIPC and inotify watchers |
+| `internal/appreg` | our rows in the Kindle's `appreg.db` |
+| `internal/screen` | eips text, pillow alert box |
+| `internal/atomicfile`, `internal/config`, `internal/certs` | safe writes, paths + token, bundled CA roots |
+
+## Install, update, uninstall
+
+- **Install:** unzip the release onto the drive, tap Endpaper, sign in on
+  the page (device code + QR).
+- **Update:** unzip over the old files, tap Endpaper: a daemon of another
+  version is replaced. The page shows a banner when GitHub has a newer
+  release (checked at most daily, only while the page is open).
+- **Uninstall:** the page button, or delete the `endpaper` folder: the
+  daemon notices (only while `/mnt/us` is mounted, never in USB mode) and
+  removes its state, page and appreg rows, then exits.
+- No autostart at boot (needs a rootfs write): one tap after a reboot.

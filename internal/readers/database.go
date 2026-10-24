@@ -19,7 +19,7 @@ var ErrNoBook = errors.New("no recently opened book in cc.db")
 // Database reads cc.db, read-only.
 //
 // Findings (FW 5.17.1): p_percentFinished is written when the user goes to
-// Home, not on page turn and not on sleep. See docs/findings-bellatrix-5.17.1.md.
+// Home, not on page turn and not on sleep. See docs/research/findings-bellatrix-5.17.1.md.
 type Database struct {
 	Path string
 }

@@ -112,7 +112,7 @@ Proposed rule (**to confirm with a test**):
   copied by USB. Works on old (hotfix) and new (hdnext) jailbreaks.
 - Autostart after reboot: **not done** (user decision 2026-10-01). KPM
   rules forbid rootfs writes and Kindles rarely reboot. After a reboot the
-  user taps `Hardcover.sh` once. See `docs/kindlemodding-notes.md`.
+  user taps `Hardcover.sh` once. See `docs/research/kindlemodding-notes.md`.
 
 ## Later (user decision: core first)
 - **Local SQLite database** for daemon state (`/var/local/hcbridge/hcbridge.db`):

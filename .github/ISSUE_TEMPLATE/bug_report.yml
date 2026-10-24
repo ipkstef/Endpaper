@@ -1,0 +1,46 @@
+name: Bug report
+description: Something does not sync or does not work on your Kindle.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. On the Kindle, tap **Endpaper** > **Save log for support**,
+        connect USB, and attach `endpaper/endpaper-log.txt` below.
+  - type: input
+    id: version
+    attributes:
+      label: Endpaper version
+      description: Shown at the bottom of the Endpaper page.
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: input
+    id: kindle
+    attributes:
+      label: Kindle model and firmware
+      description: Settings > Device Options > Device Info.
+      placeholder: Paperwhite 5, 5.17.1
+    validations:
+      required: true
+  - type: input
+    id: jailbreak
+    attributes:
+      label: Jailbreak
+      placeholder: WinterBreak + hotfix, Vera, SpiderCat, ...
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Check setup result
+      description: Endpaper > Check setup. Paste the lines (or a photo).
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Attach endpaper-log.txt (drag the file here).

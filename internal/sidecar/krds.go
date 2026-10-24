@@ -2,7 +2,7 @@
 //
 // Files like .azw3f / .azw3r (and .yjf / .yjr for KFX) use Amazon's "KRDS"
 // format: an 8-byte signature, then typed values and named objects.
-// Seen on FW 5.17.1 (docs/findings-bellatrix-5.17.1.md, "Sleep research"):
+// Seen on FW 5.17.1 (docs/research/findings-bellatrix-5.17.1.md, "Sleep research"):
 // .azw3f holds "lpr" (last position read) and "fpr" (furthest position
 // read); the reader rewrites it on open, sleep and leaving the book.
 package sidecar

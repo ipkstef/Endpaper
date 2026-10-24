@@ -1,5 +1,5 @@
 // Package events watches Kindle events: LIPC (lipc-wait-event) and inotify.
-// Findings on FW 5.17.1: docs/findings-bellatrix-5.17.1.md, "Events test".
+// Findings on FW 5.17.1: docs/research/findings-bellatrix-5.17.1.md, "Events test".
 package events
 
 import (
