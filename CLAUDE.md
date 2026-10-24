@@ -97,7 +97,8 @@ License MIT. Release: push tag `vX.Y.Z` → `.github/workflows/release.yml`
 (needs repo secret `HC_CLIENT_ID`). The page shows an update banner when
 GitHub has a newer release (checked at most daily, only while the page is
 open; release builds only). Open: public repo + registered public client
-ID, old-kernel device check. v0.1.0 tagged 2026-10-24.
+ID, old-kernel device check. v0.1.0: the user tags it on github.com
+(this session cannot push tags or rename the repo: proxy policy).
 Go version still open (needs an old-kernel device); builds use Go 1.23.
 
 ## Docs

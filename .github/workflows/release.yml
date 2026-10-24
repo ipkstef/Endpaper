@@ -1,11 +1,16 @@
-# Push a tag like v0.1.0: tests run, the zip is built with the public
-# Hardcover client ID (repository secret HC_CLIENT_ID) and attached to a
-# new GitHub release. The Kindle page shows an update banner when its
+# Push a tag like v0.1.0, or publish a release with a new tag on
+# github.com: tests run, the zip is built with the public Hardcover client
+# ID (repository secret HC_CLIENT_ID) and attached to the release (created
+# if it does not exist). The Kindle page shows an update banner when its
 # version is older than the latest release.
 name: Release
 on:
   push:
     tags: ["v*.*.*"]
+  release:
+    types: [published]
+concurrency:
+  group: release-${{ github.ref_name }}
 permissions:
   contents: write
 jobs:
@@ -30,5 +35,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "dist/endpaper-${GITHUB_REF_NAME}.zip" \
-            --title "$GITHUB_REF_NAME" --generate-notes
+          ZIP="dist/endpaper-${GITHUB_REF_NAME}.zip"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$ZIP" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$ZIP" --title "Endpaper $GITHUB_REF_NAME" --generate-notes
+          fi
