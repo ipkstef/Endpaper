@@ -7,6 +7,10 @@
   var key = window.HC ? HC.key : "";
   var timer = null;
   var pendingAct = null;
+  var msgAt = 0;        // when the message was shown (ms)
+  var waitSince = 0;    // "sync now": lastAt before the tap; 0 = not waiting
+  var waitStart = 0;
+  var last = null;      // last status
 
   function $(id) { return document.getElementById(id); }
   function show(id, on) {
@@ -37,10 +41,24 @@
   function message(text) {
     if (text) { setText("msg", text); }
     show("msg", !!text);
+    msgAt = text ? new Date().getTime() : 0;
   }
 
   function render(s) {
+    last = s;
     show("loading", false);
+    var now = new Date().getTime();
+    if (waitSince) {
+      if (s && s.lastAt && s.lastAt > waitSince) {
+        waitSince = 0;
+        message("Done. " + (s.lastResult || ""));
+      } else if (now - waitStart > 120000) {
+        waitSince = 0;
+        message("Still working. The status updates when it is done.");
+      }
+    } else if (msgAt && now - msgAt > 20000) {
+      message(""); // old messages do not stay on screen
+    }
     if (!s) {
       show("off", true); show("signin", false); show("status", false); show("actions", false);
       schedule(30000);
@@ -77,7 +95,7 @@
       setText("pending", String(s.pending));
     }
     // Poll fast only while waiting for something.
-    schedule(login.active || (s.signedIn && !s.user) ? 4000 : 30000);
+    schedule(login.active || waitSince || msgAt || (s.signedIn && !s.user) ? 4000 : 30000);
   }
 
   function schedule(ms) {
@@ -90,9 +108,13 @@
   function act(name) {
     message("Working...");
     show("checks", false);
+    if (name === "sync") {
+      waitSince = (last && last.lastAt) || 1;
+      waitStart = new Date().getTime();
+    }
     call(name, "POST", function (out) {
-      if (!out) { message("No answer. Is sync running?"); refresh(); return; }
-      if (out.error) { message("Error: " + out.error); refresh(); return; }
+      if (!out) { waitSince = 0; message("No answer. Is sync running?"); refresh(); return; }
+      if (out.error) { waitSince = 0; message("Error: " + out.error); refresh(); return; }
       if (name === "check") {
         message("");
         setText("checks", out.message || "");
@@ -141,6 +163,13 @@
   }, false);
   $("btnCancel").addEventListener("click", function () {
     call("login-cancel", "POST", function () { message(""); refresh(); });
+  }, false);
+
+  // Back on the page (Home, then tap Endpaper again): fresh status.
+  window.addEventListener("focus", refresh, false);
+  window.addEventListener("pageshow", refresh, false);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { refresh(); }
   }, false);
 
   refresh();

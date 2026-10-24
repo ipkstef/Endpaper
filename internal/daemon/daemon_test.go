@@ -249,6 +249,23 @@ func TestNoWriteWhenUnchanged(t *testing.T) {
 	}
 }
 
+// "Sync now" from the page always saves the scan time, also when nothing
+// changed: the page waits for "Last check" to change.
+func TestSyncNowSavesScanTime(t *testing.T) {
+	src := &fakeSrc{m: map[string]readers.Progress{"a": pr(10, 100)}}
+	d := newD(t, src, &fakeSync{})
+	d.Scan(context.Background())
+	os.Remove(d.StatePath)
+	d.ScanFor(context.Background(), "poll")
+	if _, err := os.Stat(d.StatePath); err == nil {
+		t.Fatal("unchanged poll was written")
+	}
+	d.ScanFor(context.Background(), "sync now")
+	if _, err := os.Stat(d.StatePath); err != nil {
+		t.Fatal("sync now did not save the scan time")
+	}
+}
+
 // A book deleted from the Kindle is removed from the state.
 func TestDeletedBookForgotten(t *testing.T) {
 	src := &fakeSrc{m: map[string]readers.Progress{"a": pr(10, 100), "b": pr(20, 200)}}

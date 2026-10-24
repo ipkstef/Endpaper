@@ -343,6 +343,10 @@ func (d *Daemon) scan(ctx context.Context, why string) error {
 		d.Logf("daemon: %q: %s", local.Title, st.LastResult)
 	}
 	st.LastScan = time.Now()
+	if strings.Contains(why, "sync now") {
+		// The user asked: always save, so "Last check" shows it was done.
+		d.savedAt = time.Time{}
+	}
 	return d.save()
 }
 

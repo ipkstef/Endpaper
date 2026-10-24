@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/img/logo.png" width="260" alt="Endpaper logo: an open book"></p>
+
 # Endpaper
 
 **A native Kindle → [Hardcover.app](https://hardcover.app) sync.**

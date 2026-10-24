@@ -127,6 +127,7 @@ type statusOut struct {
 	SignedIn   bool        `json:"signedIn"`
 	User       string      `json:"user,omitempty"`
 	LastCheck  string      `json:"lastCheck,omitempty"`
+	LastAt     int64       `json:"lastAt,omitempty"` // Unix seconds, for "sync now" done
 	LastResult string      `json:"lastResult,omitempty"`
 	Pending    int         `json:"pending"`
 	Login      *loginState `json:"login,omitempty"`
@@ -147,6 +148,7 @@ func (s *api) status(context.Context) (any, error) {
 		last, res, pending := daemon.ReadStatus(db)
 		if !last.IsZero() {
 			out.LastCheck = last.Local().Format("Jan 2, 15:04")
+			out.LastAt = last.Unix()
 		}
 		out.LastResult, out.Pending = res, pending
 	}

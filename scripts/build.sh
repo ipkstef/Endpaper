@@ -13,7 +13,9 @@ rm -rf "$OUT" && mkdir -p "$OUT/endpaper/bin" "$OUT/documents"
 GOTOOLCHAIN=go1.23.12 CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=6 \
 	go build -trimpath -ldflags "-s -w -X main.clientID=${HC_CLIENT_ID:-} -X main.version=$VERSION" \
 	-o "$OUT/endpaper/bin/endpaper" ./cmd/endpaper
-cp packaging/kindle/documents/Endpaper.sh "$OUT/documents/"
+# Library cover: the logo as the scriptlet's "# Icon:" header (base64 PNG).
+ICON="# Icon: data:image/png;base64,$(base64 -w0 packaging/kindle/cover.png)"
+awk -v icon="$ICON" '{print} /^# Author:/ {print icon}' packaging/kindle/documents/Endpaper.sh > "$OUT/documents/Endpaper.sh"
 cp README.md "$OUT/endpaper/README.md"
 [ -f LICENSE ] && cp LICENSE "$OUT/endpaper/LICENSE"
 # Local builds: a client_id.txt next to the package is copied in.

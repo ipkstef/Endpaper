@@ -28,7 +28,10 @@ Result v0.1.0 (device log 2026-10-24 07:36): steps 0, 1, 2, 3, 5, 6, 8
 **pass** (migration moved 9 files and kept the state; page opened as
 window `L:A_N:application_PC:TS_ID:io.github.ipkstef.endpaper`; page
 reached the API; sign-out, then sign-in with code in 31 s; check setup all
-OK). Open: 4, 7, 9–12.
+OK). Second log (07:45): 7 **pass** (page reopened twice, no daemon restart);
+highlights/notes sent. Bug: after "Sync now", the message stayed (an
+unchanged scan did not save "Last check", and the page never cleared the
+message) → fixed for v0.1.1. Open: 4 (retest on v0.1.1), 9–12.
 
 Setup: unzip `endpaper-<version>.zip` onto the drive (do not delete the
 old KUAL `extensions/hcbridge` yourself). Copy your `client_id.txt` into
@@ -49,9 +52,12 @@ the new `endpaper` folder. Eject.
    (only one daemon: the old one was stopped in step 0).
 3. **Status:** page shows "Signed in as @you", last check, last result
    (you are already signed in).
-4. **Sync now:** tap it. Pass: message "Checking your books now." and
-   "Last check" changes to now. (v0.1.0 logs nothing when no book
-   changed; later builds log `daemon: scan (sync now): …`.)
+4. **Sync now:** tap it. Pass: "Checking your books now.", then within
+   ~10 s "Done. …" and "Last check" changes to now; the message clears
+   after ~20 s, and is gone when you leave and come back. Log (v0.1.1+):
+   `daemon: scan (sync now): …`.
+4b. **Cover (v0.1.1+):** the library item shows the Endpaper logo (may
+   need a library refresh). UNVERIFIED: the icon header on this firmware.
 5. **Check setup:** list of OK/FAIL lines on the page. Send a photo if any
    FAIL.
 6. **Sign out → Sign in:** Sign out (confirm). Page shows "Sign in". Tap
