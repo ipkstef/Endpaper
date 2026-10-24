@@ -1,0 +1,21 @@
+name: CI
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.12"
+      - name: gofmt
+        run: test -z "$(gofmt -l cmd internal)" || (gofmt -l cmd internal; exit 1)
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: ARM build
+        run: ./scripts/build.sh

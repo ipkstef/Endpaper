@@ -86,8 +86,11 @@ Uninstall = page button, or delete the folder: the daemon sees it gone
 (only while /mnt/us is mounted, never in USB mode) and removes the rest.
 This build is **not yet on device**; checklist in `docs/testing.md`.
 
-Open: LICENSE (user choice), public repo + registered public client ID
-(`HC_CLIENT_ID`), release workflow, old-kernel device check.
+License MIT. Release: push tag `vX.Y.Z` → `.github/workflows/release.yml`
+(needs repo secret `HC_CLIENT_ID`). The page shows an update banner when
+GitHub has a newer release (checked at most daily, only while the page is
+open; release builds only). Open: public repo + registered public client
+ID, first tagged release, old-kernel device check.
 Go version still open (needs an old-kernel device); builds use Go 1.23.
 
 ## Docs

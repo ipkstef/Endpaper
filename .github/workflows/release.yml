@@ -1,0 +1,34 @@
+# Push a tag like v0.1.0: tests run, the zip is built with the public
+# Hardcover client ID (repository secret HC_CLIENT_ID) and attached to a
+# new GitHub release. The Kindle page shows an update banner when its
+# version is older than the latest release.
+name: Release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # git describe needs the tags
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.12"
+      - run: go test -race ./...
+      - name: Build
+        env:
+          HC_CLIENT_ID: ${{ secrets.HC_CLIENT_ID }}
+        run: |
+          test -n "$HC_CLIENT_ID" || { echo "secret HC_CLIENT_ID is not set"; exit 1; }
+          ./scripts/build.sh
+          test -f "dist/hcbridge-${GITHUB_REF_NAME}.zip"
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "dist/hcbridge-${GITHUB_REF_NAME}.zip" \
+            --title "$GITHUB_REF_NAME" --generate-notes

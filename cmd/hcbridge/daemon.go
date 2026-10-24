@@ -110,7 +110,8 @@ func (a *app) daemon(ctx context.Context) error {
 
 	var caps []string
 	importAll := new(atomic.Bool)
-	srv := &api{a: a, key: newKey(), fire: fire, stop: cancel, importAll: importAll}
+	srv := &api{a: a, key: newKey(), fire: fire, stop: cancel, importAll: importAll,
+		upd: &updates{http: a.oauth.HTTP}}
 	if port, err := srv.serve(ctx); err != nil {
 		caps = append(caps, "page api: "+err.Error())
 	} else if err := installUI(port, srv.key); err != nil {

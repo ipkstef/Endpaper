@@ -31,6 +31,7 @@ type api struct {
 	fire      func(string)
 	stop      func()
 	importAll *atomic.Bool
+	upd       *updates // nil: no update check
 
 	seen atomic.Bool // first request from the page logged
 
@@ -129,10 +130,17 @@ type statusOut struct {
 	LastResult string      `json:"lastResult,omitempty"`
 	Pending    int         `json:"pending"`
 	Login      *loginState `json:"login,omitempty"`
+	Update     string      `json:"update,omitempty"` // newer release tag
+	UpdateURL  string      `json:"updateURL,omitempty"`
 }
 
 func (s *api) status(context.Context) (any, error) {
 	out := statusOut{Version: version}
+	if s.upd != nil {
+		if out.Update = s.upd.available(version); out.Update != "" {
+			out.UpdateURL = releasesURL
+		}
+	}
 	_, err := s.a.store.Load()
 	out.SignedIn = err == nil
 	if db := s.a.stateDB(); db != nil {

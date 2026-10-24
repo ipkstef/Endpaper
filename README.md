@@ -64,6 +64,17 @@ Leave the page with the Home button.
 - A book that is not found on Hardcover is skipped. Add the right edition to
   any shelf on hardcover.app; it syncs within an hour.
 
+## Update
+
+When a new version is out, the Hardcover page shows an **Update available**
+banner.
+
+1. Download the new zip from the releases page.
+2. Connect USB and unzip it onto the Kindle drive. Replace the old files.
+   **Do not delete the `hcbridge` folder first**: deleting it uninstalls
+   (your sign-in is removed).
+3. Eject and tap **Hardcover**. The new version starts.
+
 ## Uninstall
 
 Either:
@@ -77,8 +88,9 @@ Either:
 ## Privacy
 
 Your Hardcover sign-in stays on the Kindle (`/var/local/hcbridge`). The
-program only talks to Hardcover. Highlights and notes are sent as private
-entries. Nothing else is collected.
+program talks to Hardcover, and, while the Hardcover page is open, at most
+once a day to GitHub to look for a new version. Highlights and notes are
+sent as private entries. Nothing else is collected.
 
 ## Troubleshooting
 
@@ -95,3 +107,10 @@ HC_CLIENT_ID=<your Hardcover OAuth client id> ./scripts/build.sh   # dist/hcbrid
 
 One static ARM binary in Go (no system libraries needed). The design and
 the research behind it are in `docs/` (start with `docs/architecture.md`).
+
+Releases: set the repository secret `HC_CLIENT_ID`, then push a tag such
+as `v0.1.0`. The release workflow tests, builds and publishes the zip.
+
+## License
+
+MIT, see `LICENSE`.

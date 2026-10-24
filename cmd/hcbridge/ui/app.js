@@ -48,6 +48,8 @@
     }
     show("off", false);
     setText("ver", s.version || "");
+    show("update", !!s.update);
+    if (s.update) { setText("updVer", s.update); setText("updURL", s.updateURL || ""); }
     var login = s.login || {};
     show("signin", !s.signedIn);
     show("status", s.signedIn);
