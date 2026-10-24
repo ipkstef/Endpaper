@@ -143,7 +143,7 @@ func migrateLegacy(stateDir string, mounted func() bool) (notes []string) {
 	notes = append(notes, fmt.Sprintf("moved %d files from %s", moved, legacy.stateDir))
 	_ = os.RemoveAll(legacy.stateDir)
 	if err := appreg.Unregister(appreg.DefaultPath, legacy.appID); err == nil {
-		notes = append(notes, "removed old appreg rows")
+		notes = append(notes, "old appreg rows removed (if any)")
 	}
 	_ = os.RemoveAll(legacy.uiDir)
 	if mounted() {

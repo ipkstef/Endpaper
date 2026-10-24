@@ -24,6 +24,12 @@ Goal: few device rounds. The user has one Kindle.
   steps and the log lines that mean pass.
 
 ## Checklist: Endpaper scriptlet + Mesquite page build (2026-10-24)
+Result v0.1.0 (device log 2026-10-24 07:36): steps 0, 1, 2, 3, 5, 6, 8
+**pass** (migration moved 9 files and kept the state; page opened as
+window `L:A_N:application_PC:TS_ID:io.github.ipkstef.endpaper`; page
+reached the API; sign-out, then sign-in with code in 31 s; check setup all
+OK). Open: 4, 7, 9–12.
+
 Setup: unzip `endpaper-<version>.zip` onto the drive (do not delete the
 old KUAL `extensions/hcbridge` yourself). Copy your `client_id.txt` into
 the new `endpaper` folder. Eject.
@@ -43,8 +49,9 @@ the new `endpaper` folder. Eject.
    (only one daemon: the old one was stopped in step 0).
 3. **Status:** page shows "Signed in as @you", last check, last result
    (you are already signed in).
-4. **Sync now:** tap it. Pass: message "Checking your books now."; log
-   `daemon: scan (sync now)`.
+4. **Sync now:** tap it. Pass: message "Checking your books now." and
+   "Last check" changes to now. (v0.1.0 logs nothing when no book
+   changed; later builds log `daemon: scan (sync now): …`.)
 5. **Check setup:** list of OK/FAIL lines on the page. Send a photo if any
    FAIL.
 6. **Sign out → Sign in:** Sign out (confirm). Page shows "Sign in". Tap

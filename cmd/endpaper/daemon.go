@@ -268,7 +268,7 @@ func (a *app) daemon(ctx context.Context) error {
 		}
 		// User actions (few per day) always get one line, so a log shows
 		// whether the Kindle wrote a new position for them.
-		if strings.Contains(why, "sleep") || strings.Contains(why, "left book") {
+		if strings.Contains(why, "sleep") || strings.Contains(why, "left book") || strings.Contains(why, "sync now") {
 			if n, book, pct, side := d.LastScan(); n == 0 {
 				log.Printf("daemon: scan (%s): no new position in cc.db (latest book %s at %.2f%%; %s)", why, book, pct, side)
 			}
