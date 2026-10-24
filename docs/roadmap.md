@@ -108,7 +108,7 @@ Proposed rule (**to confirm with a test**):
   `/var/local/appreg.db` (our rows only, backup first) are accepted when
   they improve the app. Uninstall: page button or delete the folder.
 - Distribution (user decision 2026-10-02): **no KPM, no KUAL.** A zip on
-  GitHub releases: one scriptlet `Hardcover.sh` + the `hcbridge` folder,
+  GitHub releases: one scriptlet `Hardcover.sh` + the `hcbridge` folder (renamed Endpaper 2026-10-24),
   copied by USB. Works on old (hotfix) and new (hdnext) jailbreaks.
 - Autostart after reboot: **not done** (user decision 2026-10-01). KPM
   rules forbid rootfs writes and Kindles rarely reboot. After a reboot the

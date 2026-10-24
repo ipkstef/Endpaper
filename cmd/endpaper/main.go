@@ -1,6 +1,6 @@
 // Command endpaper syncs Kindle reading progress to Hardcover.
 //
-// Users only tap "Hardcover" in the library (documents/Hardcover.sh), which
+// Users only tap "Endpaper" in the library (documents/Endpaper.sh), which
 // runs "endpaper app": it starts the daemon and opens our page. The other
 // commands are for development and support (SSH).
 //
