@@ -3,6 +3,7 @@
 # Endpaper
 
 **A native Kindle → [Hardcover.app](https://hardcover.app) sync.**
+Website: <https://ipkstef.github.io/Endpaper/>
 
 Read on your jailbroken Kindle as usual. Endpaper is a small background
 program that sends your reading progress to Hardcover.

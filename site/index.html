@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Endpaper — Kindle to Hardcover sync</title>
+<meta name="description" content="Endpaper is a native Kindle to Hardcover.app sync. Read in the stock Kindle reader; your progress, finished books, ratings and highlights go to Hardcover.">
+<meta property="og:title" content="Endpaper — Kindle to Hardcover sync">
+<meta property="og:description" content="Read in the stock Kindle reader. Your progress, finished books, ratings and highlights go to Hardcover.">
+<meta property="og:image" content="logo.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f4f2ee;
+    --card: #fbfaf8;
+    --ink: #161616;
+    --muted: #5d5a55;
+    --line: #d9d5ce;
+    --accent: #161616;
+    --accent-ink: #fbfaf8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #151514;
+      --card: #1d1d1b;
+      --ink: #eeebe5;
+      --muted: #a8a49c;
+      --line: #34332f;
+      --accent: #eeebe5;
+      --accent-ink: #151514;
+    }
+    .logo { filter: invert(1); mix-blend-mode: screen; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 17px/1.6 "Literata", Georgia, serif;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+  header.hero { text-align: center; padding: 64px 0 40px; }
+  .logo { width: 220px; max-width: 60vw; height: auto; display: block; margin: 0 auto 8px; mix-blend-mode: multiply; }
+  .tagline { font-size: 1.45rem; margin: 0 0 10px; font-weight: 600; }
+  .sub { color: var(--muted); max-width: 560px; margin: 0 auto 28px; }
+  .buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    font: 600 0.95rem/1 "Inter", system-ui, sans-serif;
+    text-decoration: none;
+    padding: 14px 22px;
+    border: 2px solid var(--accent);
+    border-radius: 2px;
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.secondary { color: var(--ink); }
+  .note { font: 0.85rem/1.5 "Inter", system-ui, sans-serif; color: var(--muted); margin-top: 14px; }
+  section { padding: 36px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 1.35rem; margin: 0 0 16px; }
+  .why p { max-width: 680px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); padding: 18px 18px 14px; }
+  .card h3 { font: 600 1rem/1.3 "Inter", system-ui, sans-serif; margin: 0 0 6px; }
+  .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+  ol.steps { padding-left: 1.3em; max-width: 680px; }
+  ol.steps li { margin: 0 0 10px; }
+  code { font: 0.88em/1 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--card); border: 1px solid var(--line); padding: 1px 5px; }
+  ul.plain { padding-left: 1.2em; max-width: 680px; }
+  ul.plain li { margin-bottom: 6px; }
+  footer { border-top: 1px solid var(--line); padding: 28px 0 48px; color: var(--muted); font: 0.85rem/1.6 "Inter", system-ui, sans-serif; }
+  @media (max-width: 520px) {
+    header.hero { padding: 40px 0 28px; }
+    .tagline { font-size: 1.2rem; }
+    .btn { width: 100%; text-align: center; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <img class="logo" src="logo.png" alt="Endpaper logo: an open book" width="220" height="188">
+  <p class="tagline">A native Kindle → Hardcover sync</p>
+  <p class="sub">Read in the Kindle's own reader, the way you always do. Endpaper quietly
+    sends your progress, finished books, ratings and highlights to
+    <a href="https://hardcover.app">Hardcover</a>.</p>
+  <div class="buttons">
+    <a class="btn primary" href="https://github.com/ipkstef/Endpaper/releases/latest">Download the latest release</a>
+    <a class="btn secondary" href="https://github.com/ipkstef/Endpaper">View on GitHub</a>
+  </div>
+  <p class="note">For jailbroken Kindles. Free and open source (MIT).</p>
+</header>
+
+<section class="why">
+  <h2>Why Endpaper</h2>
+  <p>The Kindle only talks to Goodreads. If you track your reading on Hardcover, you
+    either update every book by hand, or you replace the Kindle reader with
+    another app such as KOReader, and give up the reader you like.</p>
+  <p>Endpaper takes a third path. It is a small companion program that
+    <strong>only watches</strong> the stock reader. It reads the same files the
+    Kindle already keeps about your books, and sends the changes to Hardcover.
+    Nothing about how you read changes.</p>
+  <p>It was built to stay out of the way: no new reader, no setup over SSH, no
+    settings to tune, and as little battery and storage use as possible.</p>
+</section>
+
+<section>
+  <h2>What it syncs</h2>
+  <div class="grid">
+    <div class="card"><h3>Reading progress</h3><p>Your page is sent when you close the book or the Kindle goes to sleep. Forward only: it never moves your progress back.</p></div>
+    <div class="card"><h3>New books</h3><p>Start a book and it is added to <em>Currently Reading</em>, matched by ISBN, ASIN, or title and author.</p></div>
+    <div class="card"><h3>Finished books</h3><p>Reach the end and the book is marked <em>Read</em> with today's date.</p></div>
+    <div class="card"><h3>Re-reads</h3><p>Start a finished book again and Hardcover gets a new read, not an overwrite.</p></div>
+    <div class="card"><h3>Star ratings</h3><p>Rate a book on the Kindle's end-of-book screen and the stars go to Hardcover.</p></div>
+    <div class="card"><h3>Highlights &amp; notes</h3><p>Sent as <em>private</em> journal entries on the book. Old ones can be imported in one tap.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>How it works</h2>
+  <div class="grid">
+    <div class="card"><h3>Observes, never changes</h3><p>Reads the Kindle's reading database and files. The Kindle reader and your books stay untouched.</p></div>
+    <div class="card"><h3>Event driven</h3><p>Wakes up when you leave a book, the Kindle sleeps or Wi-Fi returns. No constant polling.</p></div>
+    <div class="card"><h3>Offline friendly</h3><p>No Wi-Fi? Changes wait and are sent when you are back online.</p></div>
+    <div class="card"><h3>One tap to manage</h3><p>An Endpaper item in your library opens a simple page: sign in with a QR code, status, sync now, check setup.</p></div>
+  </div>
+</section>
+
+<section>
+  <h2>Install</h2>
+  <ol class="steps">
+    <li>Download <code>endpaper-&lt;version&gt;.zip</code> from the
+      <a href="https://github.com/ipkstef/Endpaper/releases/latest">latest release</a>.</li>
+    <li>Connect the Kindle with USB and unzip the file onto the Kindle drive.
+      You get <code>documents/Endpaper.sh</code> and an <code>endpaper</code> folder.</li>
+    <li>Eject, then tap <strong>Endpaper</strong> in your library.</li>
+    <li>Tap <strong>Sign in</strong>, scan the QR code with your phone and approve. Done.</li>
+  </ol>
+  <p class="note">After a restart of the Kindle, tap Endpaper once to start sync again.
+    Full instructions, updating and uninstalling: see the
+    <a href="https://github.com/ipkstef/Endpaper#readme">README</a>.</p>
+</section>
+
+<section>
+  <h2>Good to know</h2>
+  <ul class="plain">
+    <li><strong>Requirements:</strong> a jailbroken Kindle that runs scriptlets (<code>.sh</code> files in the library), a Hardcover account, and Wi-Fi to sync.</li>
+    <li><strong>Tested on</strong> one Kindle with firmware 5.17.1 so far. Reports from other models are welcome on GitHub.</li>
+    <li><strong>Privacy:</strong> your sign-in stays on the Kindle. Endpaper talks only to Hardcover, and to GitHub at most once a day to check for updates while its page is open.</li>
+    <li><strong>Independent:</strong> Endpaper is not made by or affiliated with Hardcover or Amazon.</li>
+  </ul>
+</section>
+
+<footer>
+  Endpaper · MIT License ·
+  <a href="https://github.com/ipkstef/Endpaper">Source</a> ·
+  <a href="https://github.com/ipkstef/Endpaper/releases">Releases</a> ·
+  <a href="https://github.com/ipkstef/Endpaper/issues">Report a problem</a>
+</footer>
+
+</div>
+</body>
+</html>

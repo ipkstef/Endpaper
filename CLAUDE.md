@@ -113,6 +113,7 @@ Go version still open (needs an old-kernel device); builds use Go 1.23.
 - `docs/decisions/embedded-db.md` — state DB choice (modernc sqlite, later)
 - `docs/kindlemodding-notes.md` — KindleModding wiki: scriptlets, KPM, boot, appreg
 - `docs/testing.md` — how we test: fixtures, self-test, one checklist per build
+- `site/` — public landing page (GitHub Pages, `.github/workflows/pages.yml`)
 - `docs/decisions/telemetry.md` — opt-in telemetry to S3 (draft, user decisions open)
 
 ## Working rules for Claude
