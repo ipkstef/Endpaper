@@ -58,6 +58,17 @@
   .card { background: var(--card); border: 1px solid var(--line); padding: 18px 18px 14px; }
   .card h3 { font: 600 1rem/1.3 "Inter", system-ui, sans-serif; margin: 0 0 6px; }
   .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 22px; }
+  .shots figure { margin: 0 auto; max-width: 300px; width: 100%; }
+  .kindle {
+    background: #1b1b1b;
+    border-radius: 22px;
+    padding: 18px 14px 34px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.06), 0 10px 24px rgba(0,0,0,0.12);
+  }
+  .kindle img { display: block; width: 100%; height: auto; border-radius: 3px; background: #fff; }
+  .shots figcaption { margin-top: 10px; font: 0.88rem/1.45 "Inter", system-ui, sans-serif; color: var(--muted); }
+  .shots figcaption strong { color: var(--ink); }
   ol.steps { padding-left: 1.3em; max-width: 680px; }
   ol.steps li { margin: 0 0 10px; }
   code { font: 0.88em/1 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--card); border: 1px solid var(--line); padding: 1px 5px; }
@@ -110,6 +121,28 @@
     <div class="card"><h3>Star ratings</h3><p>Rate a book on the Kindle's end-of-book screen and the stars go to Hardcover.</p></div>
     <div class="card"><h3>Highlights &amp; notes</h3><p>Sent as <em>private</em> journal entries on the book. Old ones can be imported in one tap.</p></div>
   </div>
+</section>
+
+<section>
+  <h2>On your Kindle</h2>
+  <div class="shots">
+    <figure>
+      <div class="kindle"><img src="img/signin.png" width="840" height="1120" loading="lazy"
+        alt="The Endpaper page on a Kindle: a QR code and a sign-in code to approve on your phone"></div>
+      <figcaption><strong>Sign in once.</strong> Scan the QR code with your phone, or enter the code at hardcover.app/link.</figcaption>
+    </figure>
+    <figure>
+      <div class="kindle"><img src="img/status.png" width="840" height="1120" loading="lazy"
+        alt="The Endpaper page: signed in, background sync on, last check and last result"></div>
+      <figcaption><strong>See what was sent.</strong> Status, last check and last result. Sync runs by itself; "Sync now" is there if you want it.</figcaption>
+    </figure>
+    <figure>
+      <div class="kindle"><img src="img/check.png" width="840" height="1120" loading="lazy"
+        alt="The Endpaper page: Check setup lists each part with OK"></div>
+      <figcaption><strong>Check setup.</strong> One tap tests every part on your Kindle and shows OK or FAIL.</figcaption>
+    </figure>
+  </div>
+  <p class="note">Previews of the Endpaper page, rendered from the app's own page code with sample data.</p>
 </section>
 
 <section>
